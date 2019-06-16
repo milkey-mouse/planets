@@ -1,0 +1,11 @@
+[package]
+name = "planets"
+version = "0.1.0"
+authors = ["Milkey Mouse <milkeymouse@meme.institute>"]
+edition = "2018"
+
+[dependencies]
+vulkano = "0.12.0"
+vulkano-shaders = "0.12.0"
+vulkano-win = "0.12.0"
+winit = "0.19.1"
