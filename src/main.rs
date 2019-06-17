@@ -130,26 +130,23 @@ fn main() {
     };
 
     let vertex_buffer = {
-        #[derive(Debug, Clone)]
-        struct Vertex {
-            position: [f32; 2],
-        }
-        vulkano::impl_vertex!(Vertex, position);
+        use shaders::particle_vert::Vertex;
 
         CpuAccessibleBuffer::from_iter(
             device.clone(),
             BufferUsage::all(),
             [
-                Vertex { position: [-0.5, -0.25] },
-                Vertex { position: [0.0, 0.5] },
-                Vertex { position: [0.25, -0.1] },
+                Vertex { position: [-0.5, -0.5], ..Default::default() },
+                Vertex { position: [-0.5, 0.5], ..Default::default() },
+                Vertex { position: [0.5, 0.5], ..Default::default() },
+                Vertex { position: [0.5, -0.5], ..Default::default() },
             ].iter()
                 .cloned(),
         ).unwrap()
     };
 
-    let vs = shaders::vertex::Shader::load(device.clone()).unwrap();
-    let fs = shaders::fragment::Shader::load(device.clone()).unwrap();
+    let vs = shaders::particle_vert::Shader::load(device.clone()).unwrap();
+    let fs = shaders::particle_frag::Shader::load(device.clone()).unwrap();
 
     let render_pass = Arc::new(
         vulkano::single_pass_renderpass!(
@@ -173,7 +170,7 @@ fn main() {
         GraphicsPipeline::start()
             .vertex_input_single_buffer()
             .vertex_shader(vs.main_entry_point(), ())
-            .triangle_list()
+            .point_list()
             .viewports_dynamic_scissors_irrelevant(1)
             .fragment_shader(fs.main_entry_point(), ())
             .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
@@ -228,8 +225,7 @@ fn main() {
                 Err(err) => panic!("{:?}", err),
             };
 
-        // Specify the color to clear the framebuffer with i.e. blue
-        let clear_values = vec![[0.0, 0.0, 1.0, 0.5].into()];
+        let clear_values = vec![[0.0, 0.0, 0.0, 0.75].into()];
 
         let command_buffer =
             AutoCommandBufferBuilder::primary_one_time_submit(device.clone(), queue.family())
