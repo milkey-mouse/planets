@@ -189,8 +189,6 @@ impl PlanetsGame {
     // TODO: move all DeviceConfig-related functions to a 'device' module
     // perhaps have all of this in a 'render' submodule?
     
-    // TODO: abstract this fn's return type into a struct (DeviceConfig? taken
-    // by vulkano?) as it's passed around a bit before being used/destructured
     fn create_device_config(surface: &Arc<Surface<Window>>, device: &PhysicalDevice) -> Result<DeviceConfig, ()> {
         let queue_families = Self::find_queue_families(surface, device)?;
 
