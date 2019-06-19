@@ -359,7 +359,7 @@ impl PlanetsGame {
         use std::collections::HashMap;
 
         // order is reversed from the struct so later queues take priority
-        [
+        let unique_queues = [
             (queue_families.graphics, &queues.graphics),
             (queue_families.compute, &queues.compute),
             (queue_families.transfer, &queues.transfer),
@@ -369,9 +369,13 @@ impl PlanetsGame {
             .collect::<HashMap<_, _>>()
             .values()
             .map(|q| *q)
-            .collect::<Vec<_>>()
-            .as_slice()
-            .into()
+            .collect::<Vec<_>>();
+
+        if unique_queues.len() == 1 {
+            unique_queues[0].into()
+        } else {
+            unique_queues.as_slice().into()
+        }
     }
 
     fn create_swapchain(
