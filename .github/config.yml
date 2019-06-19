@@ -1,4 +1,4 @@
 todo:
-  #autoAssign: false
+  autoAssign: false
   keyword: ["// TODO: ", "# TODO: "]
   bodyKeyword: ["// ", "# "]
