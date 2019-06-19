@@ -71,6 +71,9 @@ use std::vec::IntoIter;
 
 mod shaders;
 
+const WIDTH: u32 = 1280;
+const HEIGHT: u32 = 720;
+
 struct QueueFamilyIDs {
     graphics: u32,
     compute: u32,
@@ -200,7 +203,7 @@ impl PlanetsGame {
         let capabilities = surface.capabilities(*device).ok().ok_or(())?;
         let surface_format = Self::choose_surface_format(&capabilities.supported_formats)?;
         let present_mode = Self::choose_present_mode(capabilities.present_modes)?;
-        let extents = Self::get_extents(&capabilities);
+        let extents = Self::get_extents(&capabilities, &surface.window());
 
         Ok(DeviceConfig {
             queue_families,
@@ -323,21 +326,19 @@ impl PlanetsGame {
         }
     }
 
-    fn get_extents(capabilities: &Capabilities) -> [u32; 2] {
-        capabilities.current_extent.unwrap_or_else(|| {
-            // TODO: get real window size
-            // resizable windows?
-            let mut actual_extents = [800, 600];
+    fn get_extents(capabilities: &Capabilities, window: &Window) -> [u32; 2] {
+        let dims: (u32, u32) = window
+            .get_inner_size()
+            .unwrap_or_else(|| LogicalSize::new(WIDTH.into(), HEIGHT.into()))
+            .to_physical(window.get_hidpi_factor())
+            .into();
+
+        capabilities.current_extent.unwrap_or_else(|| [
             // TODO: use clamp() when stabilized
             // see rust-lang/rust#44095
-            actual_extents[0] = capabilities.min_image_extent[0]
-                .max(capabilities.max_image_extent[0].min(actual_extents[0]));
-
-            actual_extents[1] = capabilities.min_image_extent[1]
-                .max(capabilities.max_image_extent[1].min(actual_extents[1]));
-
-            actual_extents
-        })
+            capabilities.min_image_extent[0].max(capabilities.max_image_extent[0].min(dims.0)),
+            capabilities.min_image_extent[1].max(capabilities.max_image_extent[1].min(dims.1)),
+        ])
     }
 
     fn choose_surface_transform(capabilities: &Capabilities) -> SurfaceTransform {
@@ -404,19 +405,13 @@ impl PlanetsGame {
                 .collect::<Vec<_>>()
                 .as_slice()
                 .into()
-
-            /*if queue_families.graphics != queue_families.present {
-                vec![&queues.graphics, &queues.present].as_slice().into()
-            } else {
-                (&queues.graphics).into()
-            }*/
         };
 
         Swapchain::new(
             device.clone(),
             surface.clone(),
             image_count,
-            device_config.surface_format.0, // TODO: color space?
+            device_config.surface_format.0,
             device_config.extents,
             1,
             image_usage,
@@ -623,7 +618,7 @@ impl PlanetsGame {
             WindowBuilder::new().with_title(name.to_owned())
         } else {
             WindowBuilder::new()
-        }/*.with_dimensions(LogicalSize::new(800.0, 600.0))*/
+        }.with_dimensions(LogicalSize::new(WIDTH.into(), HEIGHT.into()))
          .build_vk_surface(&event_loop, instance.clone())
          .expect("Failed to create window Vulkan surface");
         (event_loop, surface)
