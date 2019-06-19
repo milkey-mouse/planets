@@ -471,13 +471,11 @@ impl PlanetsGame {
         swapchain_images: &[Arc<SwapchainImage<Window>>],
         render_pass: &Arc<RenderPassAbstract + Send + Sync>
     ) -> Vec<Arc<FramebufferAbstract + Send + Sync>> {
-        // TODO: expect() instead of unwrap() on FB creation
         swapchain_images.iter()
             .map(|image| {
-                // TODO: why are we assigning to a variable?
                 let fba: Arc<FramebufferAbstract + Send + Sync> = Arc::new(Framebuffer::start(render_pass.clone())
-                    .add(image.clone()).unwrap()
-                    .build().unwrap());
+                    .add(image.clone()).expect("Failed to add image to framebuffer")
+                    .build().expect("Failed to build framebuffer"));
                 fba
             })
             .collect()
