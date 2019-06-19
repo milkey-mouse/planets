@@ -1,0 +1,4 @@
+todo:
+  #autoAssign: false
+  keyword: ["// TODO: ", "# TODO: "]
+  bodyKeyword: ["// ", "# "]
