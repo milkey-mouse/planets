@@ -354,6 +354,26 @@ impl PlanetsGame {
             .unwrap()
     }
 
+    // the sharing mode this function creates allows all queues to share
+    fn get_sharing_mode(queue_families: &QueueFamilyIDs, queues: &Queues) -> SharingMode {
+        use std::collections::HashMap;
+
+        // order is reversed from the struct so later queues take priority
+        [
+            (queue_families.graphics, &queues.graphics),
+            (queue_families.compute, &queues.compute),
+            (queue_families.transfer, &queues.transfer),
+            (queue_families.present, &queues.present),
+        ].iter()
+            .cloned()
+            .collect::<HashMap<_, _>>()
+            .values()
+            .map(|q| *q)
+            .collect::<Vec<_>>()
+            .as_slice()
+            .into()
+    }
+
     fn create_swapchain(
         instance: &Arc<Instance>,
         surface: &Arc<Surface<Window>>,
@@ -373,28 +393,6 @@ impl PlanetsGame {
             ..ImageUsage::none()
         };
 
-        // TODO: refactor into get_sharing_mode
-        let sharing_mode: SharingMode = {
-            use std::collections::HashMap;
-            
-            let queue_families = &device_config.queue_families;
-            
-            // order is reversed from the struct so later queues take priority            
-            [
-                (queue_families.graphics, &queues.graphics),
-                (queue_families.compute, &queues.compute),
-                (queue_families.transfer, &queues.transfer),
-                (queue_families.present, &queues.present),
-            ].iter()
-                .cloned()
-                .collect::<HashMap<u32, &Arc<Queue>>>()
-                .values()
-                .map(|q| *q)
-                .collect::<Vec<_>>()
-                .as_slice()
-                .into()
-        };
-
         Swapchain::new(
             device.clone(),
             surface.clone(),
@@ -403,7 +401,7 @@ impl PlanetsGame {
             device_config.extents,
             1,
             image_usage,
-            sharing_mode,
+            Self::get_sharing_mode(&device_config.queue_families, &queues),
             SurfaceTransform::Identity,
             Self::choose_alpha_mode(&capabilities.supported_composite_alpha),
             device_config.present_mode,
