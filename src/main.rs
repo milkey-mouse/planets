@@ -54,6 +54,7 @@ use vulkano::{
         SurfaceTransform,
         Capabilities,
         ColorSpace,
+        SupportedCompositeAlpha,
         SupportedPresentModes,
         PresentMode,
         Swapchain,
@@ -341,19 +342,11 @@ impl PlanetsGame {
         ])
     }
 
-    fn choose_surface_transform(capabilities: &Capabilities) -> SurfaceTransform {
-        // we could do the same sort of thing as choose_alpha_mode() (prefer())
-        // but this seems to give a sane default
-        capabilities.current_transform
-    }
-
-    // TODO: take only needed field of Capabilities for these fn's
-    fn choose_alpha_mode(capabilities: &Capabilities) -> CompositeAlpha {
+    fn choose_alpha_mode(supported: &SupportedCompositeAlpha) -> CompositeAlpha {
         // prefer premultiplied over opaque over inherit alpha modes
         // postmultiplied mode won't work well because we're cheating
         // by making the clear color the only transparency in the game
         // and drawing everything else as if there was none
-        let supported = capabilities.supported_composite_alpha;
         [
             CompositeAlpha::PreMultiplied,
             CompositeAlpha::Opaque,
@@ -416,8 +409,8 @@ impl PlanetsGame {
             1,
             image_usage,
             sharing_mode,
-            Self::choose_surface_transform(&capabilities),
-            Self::choose_alpha_mode(&capabilities),
+            SurfaceTransform::Identity,
+            Self::choose_alpha_mode(&capabilities.supported_composite_alpha),
             device_config.present_mode,
             true,
             None, // old_swapchain
