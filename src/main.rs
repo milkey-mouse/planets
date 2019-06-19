@@ -103,8 +103,6 @@ struct PlanetsGame {
     instance: Arc<Instance>,
     event_loop: EventsLoop,
     surface: Arc<Surface<Window>>,
-    // TODO: store PhysicalDevice directly (lifetime issues)
-    physical_device_index: usize,
     device: Arc<Device>,
     queues: Queues,
     swapchain: Arc<Swapchain<Window>>,
@@ -150,7 +148,6 @@ impl PlanetsGame {
             instance,
             event_loop,
             surface,
-            physical_device_index,
             device,
             queues,
             swapchain,
