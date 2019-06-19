@@ -3,6 +3,17 @@ name = "planets"
 version = "0.1.0"
 authors = ["Milkey Mouse <milkeymouse@meme.institute>"]
 edition = "2018"
+repository = "https://github.com/milkey-mouse/planets"
+readme = "README.md"
+license = "GPL-3.0"
+categories = ["games"]
+keywords = [
+    "game",
+    "gravity",
+    "planets",
+    "asteroids",
+    "vulkan"
+]
 
 [dependencies]
 vulkano = "0.12.0"
