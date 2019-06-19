@@ -50,17 +50,20 @@ use vulkano::{
     single_pass_renderpass,
     swapchain::{
         acquire_next_image,
+        AcquireError,
         Surface,
         SurfaceTransform,
         Capabilities,
         ColorSpace,
+        CompositeAlpha,
+        PresentMode,
         SupportedCompositeAlpha,
         SupportedPresentModes,
-        PresentMode,
         Swapchain,
-        CompositeAlpha,
+        SwapchainCreationError,
     },
     sync::{
+        self,
         SharingMode,
         GpuFuture,
     },
@@ -103,6 +106,7 @@ struct PlanetsGame {
     instance: Arc<Instance>,
     event_loop: EventsLoop,
     surface: Arc<Surface<Window>>,
+    device_config: DeviceConfig,
     device: Arc<Device>,
     queues: Queues,
     swapchain: Arc<Swapchain<Window>>,
@@ -112,6 +116,8 @@ struct PlanetsGame {
     swapchain_framebuffers: Vec<Arc<FramebufferAbstract + Send + Sync>>,
     vertex_buffer: Arc<BufferAccess + Send + Sync>,
     command_buffers: Vec<Arc<AutoCommandBuffer>>,
+    previous_frame_end: Option<Box<GpuFuture>>,
+    recreate_swapchain: bool,
 }
 
 // TODO: prefer() function for best available choice
@@ -138,9 +144,11 @@ impl PlanetsGame {
         let (swapchain, swapchain_images) = Self::create_swapchain(&instance, &surface, &device, &queues, &device_config);
 
         let render_pass = Self::create_render_pass(&device, swapchain.format());
-        let graphics_pipeline = Self::create_graphics_pipeline(&device, &device_config, &render_pass);
+        let graphics_pipeline = Self::create_graphics_pipeline(&device, device_config.extents, &render_pass);
 
         let swapchain_framebuffers = Self::create_framebuffers(&swapchain_images, &render_pass);
+
+        let previous_frame_end = Some(Self::create_sync_objects(&device));
 
         let vertex_buffer = Self::create_vertex_buffer(&device);
 
@@ -148,6 +156,7 @@ impl PlanetsGame {
             instance,
             event_loop,
             surface,
+            device_config,
             device,
             queues,
             swapchain,
@@ -157,6 +166,8 @@ impl PlanetsGame {
             swapchain_framebuffers,
             vertex_buffer,
             command_buffers: vec![],
+            previous_frame_end,
+            recreate_swapchain: false,
         };
 
         app.create_command_buffers();
@@ -387,10 +398,8 @@ impl PlanetsGame {
     ) -> (Arc<Swapchain<Window>>, Vec<Arc<SwapchainImage<Window>>>) {
         let capabilities = &device_config.capabilities;
 
-        let mut image_count = capabilities.min_image_count + 1;
-        if capabilities.max_image_count.is_some() && image_count > capabilities.max_image_count.unwrap() {
-            image_count = capabilities.max_image_count.unwrap();
-        }
+        let image_count = capabilities.max_image_count.unwrap_or(u32::max_value())
+            .min(capabilities.min_image_count + 1);
 
         let image_usage = ImageUsage {
             color_attachment: true,
@@ -433,7 +442,7 @@ impl PlanetsGame {
 
     fn create_graphics_pipeline(
         device: &Arc<Device>,
-        device_config: &DeviceConfig,
+        extents: [u32; 2],
         render_pass: &Arc<RenderPassAbstract + Send + Sync>
     ) -> Arc<GraphicsPipelineAbstract + Send + Sync> {
         use shaders::particle_vert::Vertex;
@@ -445,7 +454,7 @@ impl PlanetsGame {
 
         let viewport = Viewport {
             origin: [0.0, 0.0],
-            dimensions: [device_config.extents[0] as f32, device_config.extents[1] as f32],
+            dimensions: [extents[0] as f32, extents[1] as f32],
             depth_range: 0.0..1.0,
         };
 
@@ -515,6 +524,10 @@ impl PlanetsGame {
                 )
             })
             .collect();
+    }
+
+    fn create_sync_objects(device: &Arc<Device>) -> Box<GpuFuture> {
+        Box::new(sync::now(device.clone())) //as Box<GpuFuture>
     }
 
     /// This function is just like the normal Device::new(), except that it
@@ -617,28 +630,77 @@ impl PlanetsGame {
         while !done {
             self.draw_frame();
         
+            let mut recreate_swapchain = self.recreate_swapchain;
             self.event_loop.poll_events(|ev| match ev {
                 Event::WindowEvent { event: WindowEvent::CloseRequested, .. } |
                 Event::WindowEvent { event: WindowEvent::Destroyed, .. } => done = true,
+                Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
                 //evt => {dbg!(evt);},
                 _ => (),
             });
+            self.recreate_swapchain = recreate_swapchain;
         }
     }
 
     fn draw_frame(&mut self) {
-        let (index, acquire_future) = acquire_next_image(self.swapchain.clone(), None).unwrap();
+        self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+
+        if self.recreate_swapchain {
+            if self.recreate_swapchain() {
+                self.recreate_swapchain = false;
+            } else {
+                return;
+            }
+        }
+
+        let (index, acquire_future) = match acquire_next_image(self.swapchain.clone(), None) {
+            Ok(r) => r,
+            Err(AcquireError::OutOfDate) => {
+                self.recreate_swapchain = !self.recreate_swapchain();
+                return;
+            },
+            Err(err) => panic!("{:?}", err)
+        };
 
         let command_buffer = self.command_buffers[index].clone();
 
-        let future = acquire_future
+        let future = self.previous_frame_end.take().unwrap()
+            .join(acquire_future)
             .then_execute(self.queues.graphics.clone(), command_buffer)
             .unwrap()
             .then_swapchain_present(self.queues.present.clone(), self.swapchain.clone(), index)
-            .then_signal_fence_and_flush()
-            .unwrap();
+            .then_signal_fence_and_flush();
 
-        future.wait(None).unwrap();
+        self.previous_frame_end = Some(match future {
+            Ok(future) => Box::new(future),
+            Err(sync::FlushError::OutOfDate) => {
+                self.recreate_swapchain = true;
+                Box::new(sync::now(self.device.clone()))
+            }
+            Err(e) => {
+                eprintln!("Frame end sync failed: {:?}", e);
+                Box::new(sync::now(self.device.clone()))
+            }
+        });
+    }
+
+    fn recreate_swapchain(&mut self) -> bool {
+        let extents = Self::get_extents(&self.device_config.capabilities, &self.surface.window());
+        let (swapchain, images) = match self.swapchain.recreate_with_dimension(extents) {
+            Ok(r) => r,
+            Err(SwapchainCreationError::UnsupportedDimensions) => return false,
+            Err(err) => panic!("{:?}", err),
+        };
+        self.swapchain = swapchain;
+        self.swapchain_images = images;
+
+        self.render_pass = Self::create_render_pass(&self.device, self.swapchain.format());
+        self.graphics_pipeline = Self::create_graphics_pipeline(&self.device, self.swapchain.dimensions(),
+            &self.render_pass);
+        self.swapchain_framebuffers = Self::create_framebuffers(&self.swapchain_images, &self.render_pass);
+        self.create_command_buffers();
+
+        return true;
     }
 }
 
