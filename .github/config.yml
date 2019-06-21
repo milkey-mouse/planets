@@ -1,4 +1,5 @@
 todo:
   autoAssign: false
+  reopenClosed: false
   keyword: ["// TODO: ", "# TODO: "]
   bodyKeyword: ["// ", "# "]
