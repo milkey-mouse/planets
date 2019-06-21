@@ -37,5 +37,5 @@ done | head -n-1 | if [ "$1" == "--mod" ]; then
     cat
     echo '}'
 else
-    sed 's/^    //' | tee src/shaders.rs
+    sed 's/^    //' | tee src/render/shaders.rs
 fi
