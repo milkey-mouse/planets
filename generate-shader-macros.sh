@@ -3,13 +3,13 @@
 # TODO: there should be some sort of way to run this sort of build script as a
 # Cargo task or something (if it were written in Rust)
 
-for VTYPE in vertex fragment; do
+for VTYPE in vertex fragment compute; do
     EXTENSION="$(echo ${VTYPE} | cut -c-4)"
     find shaders -type f -name "*.${EXTENSION}" | while read -r VPATH; do
         VNAME="$(basename "${VPATH}" ".${EXTENSION}")"
         sed 's/^    //' <<EOF
         pub mod ${VNAME}_${EXTENSION} {
-            vulkano_shaders::shader!{
+            vulkano_shaders::shader! {
                 ty: "${VTYPE}",
                 path: "${VPATH}"
             }

@@ -1,4 +1,7 @@
-use sample::{frame::Stereo, signal::{self, Signal}};
+use sample::{
+    frame::Stereo,
+    signal::{self, Signal},
+};
 
 use super::source;
 use crate::assets;

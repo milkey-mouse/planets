@@ -1,9 +1,5 @@
 use cpal::{Format, SampleRate};
-use sample::{
-    signal::{Signal},
-    Sample,
-};
-
+use sample::{signal::Signal, Sample};
 
 use std::thread;
 

@@ -1,81 +1,30 @@
-use winit::{
-    dpi::LogicalSize,
-    Event,
-    EventsLoop,
-    Window,
-    WindowBuilder,
-    WindowEvent
-};
 use vulkano::{
-    buffer::{
-        cpu_access::CpuAccessibleBuffer,
-        BufferUsage,
-        BufferAccess,
-    },
-    command_buffer::{
-        AutoCommandBuffer,
-        AutoCommandBufferBuilder,
-        DynamicState,
-    },
-    device::{
-        Device,
-        DeviceExtensions,
-    },
+    buffer::{cpu_access::CpuAccessibleBuffer, BufferAccess, BufferUsage},
+    command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder, DynamicState},
+    device::{Device, DeviceExtensions},
     format::Format,
-    framebuffer::{
-        RenderPassAbstract,
-        Subpass,
-        FramebufferAbstract,
-        Framebuffer,
-    },
-    image::{
-        ImageUsage,
-        swapchain::SwapchainImage,
-    },
-    instance::{
-        ApplicationInfo,
-        Instance,
-        PhysicalDevice,
-    },
-    pipeline::{
-        GraphicsPipeline,
-        GraphicsPipelineAbstract,
-        viewport::Viewport,
-    },
+    framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
+    image::{swapchain::SwapchainImage, ImageUsage},
+    instance::{ApplicationInfo, Instance, PhysicalDevice},
+    pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
     single_pass_renderpass,
     swapchain::{
-        acquire_next_image,
-        AcquireError,
-        Surface,
-        SurfaceTransform,
-        Swapchain,
+        acquire_next_image, AcquireError, Surface, SurfaceTransform, Swapchain,
         SwapchainCreationError,
     },
-    sync::{
-        self,
-        GpuFuture,
-    },
+    sync::{self, GpuFuture},
 };
 use vulkano_win::VkSurfaceBuild;
+use winit::{dpi::LogicalSize, Event, EventsLoop, Window, WindowBuilder, WindowEvent};
 
-use std::{
-    sync::Arc,
-    thread,
-};
+use std::{sync::Arc, thread};
 
 mod assets;
 mod audio;
 mod render;
 use render::{
-    config::{
-        self,
-        DeviceConfig,
-    },
-    queues::{
-        self,
-        QueueFamilies,
-        Queues,
-    },
+    config::{self, DeviceConfig},
+    queues::{self, QueueFamilies, Queues},
     shaders,
 };
 
@@ -114,17 +63,24 @@ impl PlanetsGame {
             engine_name: Some("Newton".into()),
             ..vulkano::app_info_from_cargo_toml!()
         };
-        
+
         let instance = Self::create_instance(&app_info);
         let (event_loop, surface) = Self::create_surface(&instance, &app_info);
 
-        let (physical_device_index, device_config) = config::pick_physical_device(&instance, &surface);
-        let (device, queues) = Self::create_logical_device(&instance, physical_device_index, &device_config.queue_families);
+        let (physical_device_index, device_config) =
+            config::pick_physical_device(&instance, &surface);
+        let (device, queues) = Self::create_logical_device(
+            &instance,
+            physical_device_index,
+            &device_config.queue_families,
+        );
 
-        let (swapchain, swapchain_images) = Self::create_swapchain(&surface, &device, &queues, &device_config);
+        let (swapchain, swapchain_images) =
+            Self::create_swapchain(&surface, &device, &queues, &device_config);
 
         let render_pass = Self::create_render_pass(&device, swapchain.format());
-        let graphics_pipeline = Self::create_graphics_pipeline(&device, device_config.extents, &render_pass);
+        let graphics_pipeline =
+            Self::create_graphics_pipeline(&device, device_config.extents, &render_pass);
 
         let swapchain_framebuffers = Self::create_framebuffers(&swapchain_images, &render_pass);
 
@@ -151,7 +107,7 @@ impl PlanetsGame {
         };
 
         app.create_command_buffers();
-        
+
         app
     }
 
@@ -170,7 +126,9 @@ impl PlanetsGame {
     ) -> (Arc<Swapchain<Window>>, Vec<Arc<SwapchainImage<Window>>>) {
         let capabilities = &device_config.capabilities;
 
-        let image_count = capabilities.max_image_count.unwrap_or(u32::max_value())
+        let image_count = capabilities
+            .max_image_count
+            .unwrap_or(u32::max_value())
             .min(capabilities.min_image_count + 1);
 
         let image_usage = ImageUsage {
@@ -192,33 +150,40 @@ impl PlanetsGame {
             device_config.present_mode,
             true,
             None, // old_swapchain
-        ).expect("Failed to create swapchain")
+        )
+        .expect("Failed to create swapchain")
     }
 
-    fn create_render_pass(device: &Arc<Device>, color_format: Format) -> Arc<dyn RenderPassAbstract + Send + Sync> {
-        Arc::new(single_pass_renderpass!(device.clone(),
-            attachments: {
-                color: {
-                    load: Clear,
-                    store: Store,
-                    format: color_format,
-                    samples: 1,
+    fn create_render_pass(
+        device: &Arc<Device>,
+        color_format: Format,
+    ) -> Arc<dyn RenderPassAbstract + Send + Sync> {
+        Arc::new(
+            single_pass_renderpass!(device.clone(),
+                attachments: {
+                    color: {
+                        load: Clear,
+                        store: Store,
+                        format: color_format,
+                        samples: 1,
+                    }
+                },
+                pass: {
+                    color: [color],
+                    depth_stencil: {}
                 }
-            },
-            pass: {
-                color: [color],
-                depth_stencil: {}
-            }
-        ).unwrap())
+            )
+            .unwrap(),
+        )
     }
 
     fn create_graphics_pipeline(
         device: &Arc<Device>,
         extents: [u32; 2],
-        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>
+        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
     ) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
         use shaders::particle_vert::Vertex;
-        
+
         let vertex = shaders::particle_vert::Shader::load(device.clone())
             .expect("Failed to create/compile vertex shader module");
         let fragment = shaders::particle_frag::Shader::load(device.clone())
@@ -244,19 +209,24 @@ impl PlanetsGame {
                 // TODO: "there's a commented out .rasterizer_discard() in Vulkano..."
                 .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
                 .build(device.clone())
-                .expect("Failed to create graphics pipeline")
+                .expect("Failed to create graphics pipeline"),
         )
     }
 
     fn create_framebuffers(
         swapchain_images: &[Arc<SwapchainImage<Window>>],
-        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>
+        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
     ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
-        swapchain_images.iter()
+        swapchain_images
+            .iter()
             .map(|image| {
-                let fba: Arc<dyn FramebufferAbstract + Send + Sync> = Arc::new(Framebuffer::start(render_pass.clone())
-                    .add(image.clone()).expect("Failed to add image to framebuffer")
-                    .build().expect("Failed to build framebuffer"));
+                let fba: Arc<dyn FramebufferAbstract + Send + Sync> = Arc::new(
+                    Framebuffer::start(render_pass.clone())
+                        .add(image.clone())
+                        .expect("Failed to add image to framebuffer")
+                        .build()
+                        .expect("Failed to build framebuffer"),
+                );
                 fba
             })
             .collect()
@@ -264,35 +234,61 @@ impl PlanetsGame {
 
     fn create_vertex_buffer(device: &Arc<Device>) -> Arc<dyn BufferAccess + Send + Sync> {
         use shaders::particle_vert::Vertex;
-    
+
         // TODO: better buffer type
         CpuAccessibleBuffer::from_iter(
             device.clone(),
             BufferUsage::vertex_buffer(),
             [
-                Vertex { position: [-0.5, -0.5], ..Default::default() },
-                Vertex { position: [-0.5, 0.5], ..Default::default() },
-                Vertex { position: [0.5, 0.5], ..Default::default() },
-                Vertex { position: [0.5, -0.5], ..Default::default() },
-            ].iter()
-             .cloned(),
-        ).expect("Failed to create vertex buffer")
+                Vertex {
+                    position: [-0.5, -0.5],
+                    ..Default::default()
+                },
+                Vertex {
+                    position: [-0.5, 0.5],
+                    ..Default::default()
+                },
+                Vertex {
+                    position: [0.5, 0.5],
+                    ..Default::default()
+                },
+                Vertex {
+                    position: [0.5, -0.5],
+                    ..Default::default()
+                },
+            ]
+            .iter()
+            .cloned(),
+        )
+        .expect("Failed to create vertex buffer")
     }
 
     fn create_command_buffers(&mut self) {
         let queue_family = self.queues.graphics.family();
-        self.command_buffers = self.swapchain_framebuffers.iter()
+        self.command_buffers = self
+            .swapchain_framebuffers
+            .iter()
             .map(|fb| {
-                Arc::new(AutoCommandBufferBuilder::primary_simultaneous_use(self.device.clone(), queue_family)
+                Arc::new(
+                    AutoCommandBufferBuilder::primary_simultaneous_use(
+                        self.device.clone(),
+                        queue_family,
+                    )
                     .unwrap()
                     .begin_render_pass(fb.clone(), false, vec![[0.0, 0.0, 0.0, 1.0].into()])
                     .unwrap()
-                    .draw(self.graphics_pipeline.clone(), &DynamicState::none(), vec![self.vertex_buffer.clone()], (), ())
+                    .draw(
+                        self.graphics_pipeline.clone(),
+                        &DynamicState::none(),
+                        vec![self.vertex_buffer.clone()],
+                        (),
+                        (),
+                    )
                     .unwrap()
                     .end_render_pass()
                     .unwrap()
                     .build()
-                    .unwrap()
+                    .unwrap(),
                 )
             })
             .collect();
@@ -302,7 +298,11 @@ impl PlanetsGame {
         Box::new(sync::now(device.clone())) //as Box<dyn GpuFuture>
     }
 
-    fn create_logical_device(instance: &Arc<Instance>, index: usize, queue_families: &QueueFamilies) -> (Arc<Device>, Queues) {
+    fn create_logical_device(
+        instance: &Arc<Instance>,
+        index: usize,
+        queue_families: &QueueFamilies,
+    ) -> (Arc<Device>, Queues) {
         let physical_device = PhysicalDevice::from_index(&instance, index).unwrap();
 
         // one might think if queue_families.graphics == queue_families.compute
@@ -311,11 +311,27 @@ impl PlanetsGame {
         // want to have different ones if possible.
         let queue_families = {
             // TODO: assert len(queue_families) == len(config.queue_families)
-            let graphics = physical_device.queue_families().filter(|&q| q.id() == queue_families.graphics).next().unwrap();
-            let compute = physical_device.queue_families().filter(|&q| q.id() == queue_families.compute).next().unwrap();
-            let transfer = physical_device.queue_families().filter(|&q| q.id() == queue_families.transfer).next().unwrap();
-            let present = physical_device.queue_families().filter(|&q| q.id() == queue_families.present).next().unwrap();
-            
+            let graphics = physical_device
+                .queue_families()
+                .filter(|&q| q.id() == queue_families.graphics)
+                .next()
+                .unwrap();
+            let compute = physical_device
+                .queue_families()
+                .filter(|&q| q.id() == queue_families.compute)
+                .next()
+                .unwrap();
+            let transfer = physical_device
+                .queue_families()
+                .filter(|&q| q.id() == queue_families.transfer)
+                .next()
+                .unwrap();
+            let present = physical_device
+                .queue_families()
+                .filter(|&q| q.id() == queue_families.present)
+                .next()
+                .unwrap();
+
             // TODO: make graphics priority vs. compute priority configurable
             let graphics_priority = 1.0;
             let compute_priority = 1.0;
@@ -337,8 +353,9 @@ impl PlanetsGame {
             physical_device,
             physical_device.supported_features(),
             &device_ext,
-            queue_families.iter().cloned()
-        ).expect("Failed to create logical device");
+            queue_families.iter().cloned(),
+        )
+        .expect("Failed to create logical device");
 
         let queues = Queues {
             graphics: queues.next().unwrap(),
@@ -350,15 +367,19 @@ impl PlanetsGame {
         (device, queues)
     }
 
-    fn create_surface(instance: &Arc<Instance>, app_info: &ApplicationInfo) -> (EventsLoop, Arc<Surface<Window>>) {
+    fn create_surface(
+        instance: &Arc<Instance>,
+        app_info: &ApplicationInfo,
+    ) -> (EventsLoop, Arc<Surface<Window>>) {
         let event_loop = EventsLoop::new();
         let surface = if let Some(name) = &app_info.application_name {
             WindowBuilder::new().with_title(name.to_owned())
         } else {
             WindowBuilder::new()
-        }.with_dimensions(LogicalSize::new(WIDTH.into(), HEIGHT.into()))
-         .build_vk_surface(&event_loop, instance.clone())
-         .expect("Failed to create window Vulkan surface");
+        }
+        .with_dimensions(LogicalSize::new(WIDTH.into(), HEIGHT.into()))
+        .build_vk_surface(&event_loop, instance.clone())
+        .expect("Failed to create window Vulkan surface");
         (event_loop, surface)
     }
 
@@ -366,12 +387,21 @@ impl PlanetsGame {
         let mut done = false;
         while !done {
             self.draw_frame();
-        
+
             let mut recreate_swapchain = self.recreate_swapchain;
             self.event_loop.poll_events(|ev| match ev {
-                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } |
-                Event::WindowEvent { event: WindowEvent::Destroyed, .. } => done = true,
-                Event::WindowEvent { event: WindowEvent::Resized(_), .. } => recreate_swapchain = true,
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                }
+                | Event::WindowEvent {
+                    event: WindowEvent::Destroyed,
+                    ..
+                } => done = true,
+                Event::WindowEvent {
+                    event: WindowEvent::Resized(_),
+                    ..
+                } => recreate_swapchain = true,
                 //evt => {dbg!(evt);},
                 _ => (),
             });
@@ -395,13 +425,16 @@ impl PlanetsGame {
             Err(AcquireError::OutOfDate) => {
                 self.recreate_swapchain = !self.recreate_swapchain();
                 return;
-            },
-            Err(err) => panic!("{:?}", err)
+            }
+            Err(err) => panic!("{:?}", err),
         };
 
         let command_buffer = self.command_buffers[index].clone();
 
-        let future = self.previous_frame_end.take().unwrap()
+        let future = self
+            .previous_frame_end
+            .take()
+            .unwrap()
             .join(acquire_future)
             .then_execute(self.queues.graphics.clone(), command_buffer)
             .unwrap()
@@ -432,9 +465,13 @@ impl PlanetsGame {
         self.swapchain_images = images;
 
         self.render_pass = Self::create_render_pass(&self.device, self.swapchain.format());
-        self.graphics_pipeline = Self::create_graphics_pipeline(&self.device, self.swapchain.dimensions(),
-            &self.render_pass);
-        self.swapchain_framebuffers = Self::create_framebuffers(&self.swapchain_images, &self.render_pass);
+        self.graphics_pipeline = Self::create_graphics_pipeline(
+            &self.device,
+            self.swapchain.dimensions(),
+            &self.render_pass,
+        );
+        self.swapchain_framebuffers =
+            Self::create_framebuffers(&self.swapchain_images, &self.render_pass);
         self.create_command_buffers();
 
         return true;

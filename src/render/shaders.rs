@@ -1,5 +1,5 @@
 pub mod particle_vert {
-    vulkano_shaders::shader!{
+    vulkano_shaders::shader! {
         ty: "vertex",
         path: "shaders/particle.vert"
     }
@@ -13,7 +13,7 @@ pub mod particle_vert {
 }
 
 pub mod particle_frag {
-    vulkano_shaders::shader!{
+    vulkano_shaders::shader! {
         ty: "fragment",
         path: "shaders/particle.frag"
     }
