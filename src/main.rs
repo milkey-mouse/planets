@@ -58,9 +58,13 @@ use vulkano::{
 };
 use vulkano_win::VkSurfaceBuild;
 
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    thread,
+};
 
 mod assets;
+mod audio;
 mod render;
 use render::{
     config::{
@@ -440,5 +444,6 @@ impl PlanetsGame {
 
 fn main() {
     let mut game = PlanetsGame::init();
+    thread::spawn(audio::sink::test);
     game.main_loop();
 }
