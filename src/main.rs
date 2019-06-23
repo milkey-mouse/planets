@@ -60,6 +60,7 @@ use vulkano_win::VkSurfaceBuild;
 
 use std::sync::Arc;
 
+mod assets;
 mod render;
 use render::{
     config::{
