@@ -44,8 +44,7 @@ pub fn choose_alpha_mode(supported: &SupportedCompositeAlpha) -> CompositeAlpha 
     ]
     .iter()
     .cloned()
-    .filter(|a| supported.supports(*a))
-    .next()
+    .find(|a| supported.supports(*a))
     .or(supported.iter().next())
     .unwrap()
 }

@@ -6,20 +6,81 @@ use vulkano::{
 };
 use winit::Window;
 
-use std::{sync::Arc, vec::IntoIter};
+use std::{
+    iter::{repeat, FromIterator},
+    sync::Arc,
+    vec::IntoIter,
+};
 
 // TODO: lib w/ proc_macro #derive(Iter) on structs with fields of uniform type
 
-// TODO: keep QueueList<T> private while typedefs are public
 pub struct QueueList<T> {
     pub graphics: T,
     pub compute: T,
     pub transfer: T,
     pub present: T,
+    // if you add more queues, remember to update FromIterator & Iterator impls
 }
 
+impl<'a, T> QueueList<T> {
+    pub fn iter(&'a self) -> QueueListIterator<'a, T> {
+        QueueListIterator {
+            list: &self,
+            index: 0,
+        }
+    }
+}
+
+impl<T> FromIterator<T> for QueueList<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
+        let ret = Self {
+            graphics: iter.next().unwrap(),
+            compute: iter.next().unwrap(),
+            transfer: iter.next().unwrap(),
+            present: iter.next().unwrap(),
+        };
+
+        assert!(iter.next().is_none());
+
+        ret
+    }
+}
+
+pub struct QueueListIterator<'a, T> {
+    list: &'a QueueList<T>,
+    index: u8,
+}
+
+impl<'a, T> Iterator for QueueListIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ret = match self.index {
+            0 => Some(&self.list.graphics),
+            1 => Some(&self.list.compute),
+            2 => Some(&self.list.transfer),
+            3 => Some(&self.list.present),
+            _ => None,
+        };
+
+        if ret.is_some() {
+            self.index += 1;
+        }
+
+        ret
+    }
+}
+
+pub type QueuePriorities = QueueList<f32>;
 pub type QueueFamilies = QueueList<u32>;
 pub type Queues = QueueList<Arc<Queue>>;
+
+impl Default for QueuePriorities {
+    fn default() -> Self {
+        repeat(1.0).take(4).collect()
+    }
+}
 
 pub fn find_queue_families(
     surface: &Arc<Surface<Window>>,

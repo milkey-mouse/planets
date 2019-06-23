@@ -5,7 +5,7 @@ use vulkano::{
     format::Format,
     framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
     image::{swapchain::SwapchainImage, ImageUsage},
-    instance::{ApplicationInfo, Instance, PhysicalDevice},
+    instance::{ApplicationInfo, Instance, PhysicalDevice, QueueFamily},
     pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
     single_pass_renderpass,
     swapchain::{
@@ -17,14 +17,14 @@ use vulkano::{
 use vulkano_win::VkSurfaceBuild;
 use winit::{dpi::LogicalSize, Event, EventsLoop, Window, WindowBuilder, WindowEvent};
 
-use std::{sync::Arc, thread};
+use std::{iter::FromIterator, sync::Arc, thread};
 
 mod assets;
 mod audio;
 mod render;
 use render::{
     config::{self, DeviceConfig},
-    queues::{self, QueueFamilies, Queues},
+    queues::{self, QueueFamilies, QueuePriorities, Queues},
     shaders,
 };
 
@@ -309,39 +309,15 @@ impl PlanetsGame {
         // we wouldn't have to have multiple (redundant, in this case) entries.
         // but there might be multiple queues in a queue family, and we still
         // want to have different ones if possible.
-        let queue_families = {
-            // TODO: assert len(queue_families) == len(config.queue_families)
-            let graphics = physical_device
-                .queue_families()
-                .filter(|&q| q.id() == queue_families.graphics)
-                .next()
-                .unwrap();
-            let compute = physical_device
-                .queue_families()
-                .filter(|&q| q.id() == queue_families.compute)
-                .next()
-                .unwrap();
-            let transfer = physical_device
-                .queue_families()
-                .filter(|&q| q.id() == queue_families.transfer)
-                .next()
-                .unwrap();
-            let present = physical_device
-                .queue_families()
-                .filter(|&q| q.id() == queue_families.present)
-                .next()
-                .unwrap();
+        let queue_families: Vec<(QueueFamily, f32)> = {
+            let families = queue_families
+                .iter()
+                .map(|q| physical_device.queue_family_by_id(*q).unwrap());
 
             // TODO: make graphics priority vs. compute priority configurable
-            let graphics_priority = 1.0;
-            let compute_priority = 1.0;
+            let priorities: QueuePriorities = Default::default();
 
-            [
-                (graphics, graphics_priority),
-                (compute, compute_priority),
-                (transfer, compute_priority),
-                (present, graphics_priority),
-            ]
+            families.zip(priorities.iter().map(|p| *p)).collect()
         };
 
         let device_ext = DeviceExtensions {
@@ -349,20 +325,15 @@ impl PlanetsGame {
             ..DeviceExtensions::none()
         };
 
-        let (device, mut queues) = queues::create_device(
+        let (device, queues) = queues::create_device(
             physical_device,
             physical_device.supported_features(),
             &device_ext,
-            queue_families.iter().cloned(),
+            queue_families,
         )
         .expect("Failed to create logical device");
 
-        let queues = Queues {
-            graphics: queues.next().unwrap(),
-            compute: queues.next().unwrap(),
-            transfer: queues.next().unwrap(),
-            present: queues.next().unwrap(),
-        };
+        let queues = Queues::from_iter(queues);
 
         (device, queues)
     }
