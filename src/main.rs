@@ -121,7 +121,7 @@ impl PlanetsGame {
         let (physical_device_index, device_config) = config::pick_physical_device(&instance, &surface);
         let (device, queues) = Self::create_logical_device(&instance, physical_device_index, &device_config.queue_families);
 
-        let (swapchain, swapchain_images) = Self::create_swapchain(&instance, &surface, &device, &queues, &device_config);
+        let (swapchain, swapchain_images) = Self::create_swapchain(&surface, &device, &queues, &device_config);
 
         let render_pass = Self::create_render_pass(&device, swapchain.format());
         let graphics_pipeline = Self::create_graphics_pipeline(&device, device_config.extents, &render_pass);
@@ -163,7 +163,6 @@ impl PlanetsGame {
     }
 
     fn create_swapchain(
-        instance: &Arc<Instance>,
         surface: &Arc<Surface<Window>>,
         device: &Arc<Device>,
         queues: &Queues,
