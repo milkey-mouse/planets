@@ -12,7 +12,7 @@ use std::{io::Cursor, iter};
 use super::{resample, CanonicalFormat, CanonicalSignal};
 use crate::assets::Asset;
 
-pub fn new(asset: Asset) -> Box<CanonicalSignal> {
+pub fn new(asset: &'static Asset) -> Box<CanonicalSignal> {
     match asset {
         Asset::Wav(data) => {
             let reader = WavReader::new(Cursor::new(data)).unwrap();
@@ -24,12 +24,12 @@ pub fn new(asset: Asset) -> Box<CanonicalSignal> {
                     reader.into_samples::<f32>().filter_map(Result::ok),
                 ),
                 SampleFormat::Int => match reader.spec().bits_per_sample {
-                    0..=16 => create_signal(
+                    0...16 => create_signal(
                         reader.spec().sample_rate,
                         reader.spec().channels,
                         reader.into_samples::<i16>().filter_map(Result::ok),
                     ),
-                    16..=32 => create_signal(
+                    17...32 => create_signal(
                         reader.spec().sample_rate,
                         reader.spec().channels,
                         reader.into_samples::<i32>().filter_map(Result::ok),
@@ -55,7 +55,8 @@ pub fn new(asset: Asset) -> Box<CanonicalSignal> {
 
 fn create_signal<I, S>(sample_rate: u32, channels: u16, iterator: I) -> Box<CanonicalSignal>
 where
-    I: Iterator<Item = S> + Sync + Send + 'static,
+    I: IntoIterator<Item = S>,
+    I::IntoIter: Sync + Send + 'static,
     S: Sample + ToSample<CanonicalFormat> + 'static,
 {
     let iterator = iterator.into_iter().map(S::to_sample);

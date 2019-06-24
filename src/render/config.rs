@@ -32,7 +32,7 @@ pub struct DeviceConfig {
 // signature may be unnecessary; I don't know Rust well enough to know
 // without a `cargo check`
 
-pub fn choose_alpha_mode(supported: &SupportedCompositeAlpha) -> CompositeAlpha {
+pub fn choose_alpha_mode(supported: SupportedCompositeAlpha) -> CompositeAlpha {
     // prefer premultiplied over opaque over inherit alpha modes
     // postmultiplied mode won't work well because we're cheating
     // by making the clear color the only transparency in the game
@@ -45,16 +45,16 @@ pub fn choose_alpha_mode(supported: &SupportedCompositeAlpha) -> CompositeAlpha 
     .iter()
     .cloned()
     .find(|a| supported.supports(*a))
-    .or(supported.iter().next())
+    .or_else(|| supported.iter().next())
     .unwrap()
 }
 
 pub fn pick_physical_device(
-    instance: Arc<Instance>,
+    instance: &Arc<Instance>,
     surface: &Surface<Window>,
 ) -> (usize, DeviceConfig) {
     let mut device_config = Err(());
-    let device_index = PhysicalDevice::enumerate(&instance)
+    let device_index = PhysicalDevice::enumerate(instance)
         .find(|device| {
             device_config = create_device_config(surface, &device);
             device_config.is_ok()
@@ -68,11 +68,11 @@ pub fn create_device_config(
     surface: &Surface<Window>,
     device: &PhysicalDevice,
 ) -> Result<DeviceConfig, ()> {
-    let queue_families = queues::find_queue_families(surface, device)?;
-
     if !check_device_extension_support(device) {
         return Err(());
     }
+
+    let queue_families = queues::find_queue_families(surface, device)?;
 
     // TODO: selectively enable panic!ing on failures like the one below
     // instead of just moving onto the next GPU/physical device
@@ -94,7 +94,7 @@ pub fn create_device_config(
 fn required_device_extensions(inherit: Option<DeviceExtensions>) -> DeviceExtensions {
     DeviceExtensions {
         khr_swapchain: true,
-        ..inherit.unwrap_or(DeviceExtensions::none())
+        ..inherit.unwrap_or_else(DeviceExtensions::none)
     }
 }
 
@@ -116,7 +116,7 @@ fn choose_surface_format(
             *format == Format::B8G8R8A8Unorm && *color_space == ColorSpace::SrgbNonLinear
         })
         .or_else(|| available_formats.first())
-        .map(|f| *f)
+        .copied()
         .ok_or(())
 }
 

@@ -68,9 +68,9 @@ impl PlanetsGame {
         let (event_loop, surface) = Self::create_surface(instance.clone(), &app_info);
 
         let (physical_device_index, device_config) =
-            config::pick_physical_device(instance.clone(), &surface);
+            config::pick_physical_device(&instance, &surface);
         let (device, queues) = Self::create_logical_device(
-            instance.clone(),
+            &instance,
             physical_device_index,
             &device_config.queue_families,
         );
@@ -85,8 +85,7 @@ impl PlanetsGame {
             render_pass.clone(),
         );
 
-        let swapchain_framebuffers =
-            Self::create_framebuffers(&swapchain_images, render_pass.clone());
+        let swapchain_framebuffers = Self::create_framebuffers(&swapchain_images, &render_pass);
 
         let previous_frame_end = Some(Self::create_sync_objects(device.clone()));
 
@@ -141,8 +140,8 @@ impl PlanetsGame {
         };
 
         Swapchain::new(
-            device.clone(),
-            surface.clone(),
+            device,
+            surface,
             image_count,
             device_config.surface_format.0,
             device_config.extents,
@@ -150,7 +149,7 @@ impl PlanetsGame {
             image_usage,
             queues::get_sharing_mode(&device_config.queue_families, &queues),
             SurfaceTransform::Identity,
-            config::choose_alpha_mode(&capabilities.supported_composite_alpha),
+            config::choose_alpha_mode(capabilities.supported_composite_alpha),
             device_config.present_mode,
             true,
             None, // old_swapchain
@@ -163,7 +162,7 @@ impl PlanetsGame {
         color_format: Format,
     ) -> Arc<dyn RenderPassAbstract + Send + Sync> {
         Arc::new(
-            single_pass_renderpass!(device.clone(),
+            single_pass_renderpass!(device,
                 attachments: {
                     color: {
                         load: Clear,
@@ -211,15 +210,15 @@ impl PlanetsGame {
                 .fragment_shader(fragment.main_entry_point(), ())
                 .depth_clamp(false)
                 // TODO: "there's a commented out .rasterizer_discard() in Vulkano..."
-                .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-                .build(device.clone())
+                .render_pass(Subpass::from(render_pass, 0).unwrap())
+                .build(device)
                 .expect("Failed to create graphics pipeline"),
         )
     }
 
     fn create_framebuffers(
         swapchain_images: &[Arc<SwapchainImage<Window>>],
-        render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
     ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
         swapchain_images
             .iter()
@@ -241,7 +240,7 @@ impl PlanetsGame {
 
         // TODO: better buffer type
         CpuAccessibleBuffer::from_iter(
-            device.clone(),
+            device,
             BufferUsage::vertex_buffer(),
             [
                 Vertex {
@@ -299,11 +298,11 @@ impl PlanetsGame {
     }
 
     fn create_sync_objects(device: Arc<Device>) -> Box<dyn GpuFuture> {
-        Box::new(sync::now(device.clone()))
+        Box::new(sync::now(device))
     }
 
     fn create_logical_device(
-        instance: Arc<Instance>,
+        instance: &Arc<Instance>,
         index: usize,
         queue_families: &QueueFamilies,
     ) -> (Arc<Device>, Queues) {
@@ -321,7 +320,7 @@ impl PlanetsGame {
             // TODO: make graphics priority vs. compute priority configurable
             let priorities: QueuePriorities = Default::default();
 
-            families.zip(priorities.iter().map(|p| *p)).collect()
+            families.zip(priorities.iter().copied()).collect()
         };
 
         let device_ext = DeviceExtensions {
@@ -353,7 +352,7 @@ impl PlanetsGame {
             WindowBuilder::new()
         }
         .with_dimensions(LogicalSize::new(WIDTH.into(), HEIGHT.into()))
-        .build_vk_surface(&event_loop, instance.clone())
+        .build_vk_surface(&event_loop, instance)
         .expect("Failed to create window Vulkan surface");
         (event_loop, surface)
     }
@@ -446,10 +445,10 @@ impl PlanetsGame {
             self.render_pass.clone(),
         );
         self.swapchain_framebuffers =
-            Self::create_framebuffers(&self.swapchain_images, self.render_pass.clone());
+            Self::create_framebuffers(&self.swapchain_images, &self.render_pass);
         self.create_command_buffers();
 
-        return true;
+        true
     }
 }
 

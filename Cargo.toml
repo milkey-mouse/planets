@@ -1,5 +1,6 @@
 [package]
 name = "planets"
+description = "A space game."
 version = "0.1.0"
 authors = ["Milkey Mouse <milkeymouse@meme.institute>"]
 edition = "2018"
