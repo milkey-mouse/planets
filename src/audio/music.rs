@@ -3,12 +3,12 @@ use sample::{
     signal::{self, Signal},
 };
 
-use super::source;
+use super::{source, CanonicalFormat};
 use crate::assets;
 
 /*struct LoadableSource {
     data: &'static [u8],
-    source: Option<Box<dyn Signal<Frame = Stereo<f64>>>>,
+    source: Option<Box<dyn CanonicalSignal>>,
 }
 
 impl LoadableSource {
@@ -17,7 +17,9 @@ impl LoadableSource {
     }
 }*/
 
-pub fn vlem() -> impl Signal<Frame = Stereo<f64>> {
+// vlem() essentially implements CanonicalSignal, but that can't be expressed
+// without trait aliases (see TODO comment in ../audio.rs & issue #31)
+pub fn vlem() -> impl Signal<Frame = Stereo<CanonicalFormat>> + Send + Sync {
     signal::from_iter(
         source::new(assets::vlem0)
             .until_exhausted()

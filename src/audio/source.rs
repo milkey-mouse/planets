@@ -9,10 +9,10 @@ use sample::{
 
 use std::{io::Cursor, iter};
 
-use super::resample;
+use super::{resample, CanonicalFormat, CanonicalSignal};
 use crate::assets::Asset;
 
-pub fn new(asset: Asset) -> Box<dyn Signal<Frame = Stereo<f64>>> {
+pub fn new(asset: Asset) -> Box<CanonicalSignal> {
     match asset {
         Asset::Wav(data) => {
             let reader = WavReader::new(Cursor::new(data)).unwrap();
@@ -53,18 +53,14 @@ pub fn new(asset: Asset) -> Box<dyn Signal<Frame = Stereo<f64>>> {
     }
 }
 
-fn create_signal<I, S>(
-    sample_rate: u32,
-    channels: u16,
-    iterator: I,
-) -> Box<dyn Signal<Frame = Stereo<f64>>>
+fn create_signal<I, S>(sample_rate: u32, channels: u16, iterator: I) -> Box<CanonicalSignal>
 where
-    I: Iterator<Item = S> + 'static,
-    S: Sample + ToSample<f64> + 'static,
+    I: Iterator<Item = S> + Sync + Send + 'static,
+    S: Sample + ToSample<CanonicalFormat> + 'static,
 {
     let iterator = iterator.into_iter().map(S::to_sample);
 
-    let signal: Box<dyn Signal<Frame = Stereo<f64>>> = match channels {
+    let signal: Box<CanonicalSignal> = match channels {
         1 => Box::new(
             signal::from_interleaved_samples_iter::<_, Mono<_>>(iterator).map(|f| [f[0], f[0]]),
         ),
