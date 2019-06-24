@@ -1,4 +1,8 @@
-use sample::{frame::Frame, interpolate, ring_buffer, signal::Signal};
+use sample::{
+    frame::{Frame, Stereo},
+    interpolate, ring_buffer,
+    signal::Signal,
+};
 
 pub mod music;
 pub mod sink;
@@ -8,13 +12,19 @@ mod source;
 const MASTER_SAMPLE_RATE: u32 = 44100;
 const HIGH_QUALITY_INTERPOLATION: bool = true;
 //const SINC_INITIALIZATION_ARRAY: [f64; 100];
-// type SampleFormat = f64;
 
-fn resample<'a, F: Frame<Sample = f64> + 'static>(
+// this probably would be i16 were it not for Interpolators requiring f64 frames
+pub type CanonicalFormat = f64;
+pub trait CanonicalSignal = Signal<Frame = Stereo<CanonicalFormat>> + Send + Sync;
+
+fn resample<F>(
     in_rate: u32,
     out_rate: Option<u32>,
-    mut signal: Box<dyn Signal<Frame = F>>,
-) -> Box<dyn Signal<Frame = F>> {
+    mut signal: Box<dyn Signal<Frame = F> + Send + Sync>,
+) -> Box<dyn Signal<Frame = F> + Send + Sync>
+where
+    F: Frame<Sample = CanonicalFormat> + Send + Sync + 'static,
+{
     let out_rate = out_rate.unwrap_or(MASTER_SAMPLE_RATE);
 
     if in_rate == out_rate {

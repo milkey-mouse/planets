@@ -1,14 +1,11 @@
-use sample::{
-    frame::Stereo,
-    signal::{self, Signal},
-};
+use sample::signal;
 
-use super::source;
+use super::{source, CanonicalSignal};
 use crate::assets;
 
 /*struct LoadableSource {
     data: &'static [u8],
-    source: Option<Box<dyn Signal<Frame = Stereo<f64>>>>,
+    source: Option<Box<dyn CanonicalSignal>>,
 }
 
 impl LoadableSource {
@@ -17,7 +14,7 @@ impl LoadableSource {
     }
 }*/
 
-pub fn vlem() -> impl Signal<Frame = Stereo<f64>> {
+pub fn vlem() -> impl CanonicalSignal {
     signal::from_iter(
         source::new(assets::vlem0)
             .until_exhausted()
