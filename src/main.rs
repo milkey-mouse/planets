@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+
 use vulkano::{
     buffer::{cpu_access::CpuAccessibleBuffer, BufferAccess, BufferUsage},
     command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder, DynamicState},
