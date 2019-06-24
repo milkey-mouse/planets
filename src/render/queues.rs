@@ -7,27 +7,26 @@ use vulkano::{
 use winit::Window;
 
 use std::{
-    iter::{repeat, FromIterator},
+    convert::TryInto,
+    iter::{repeat, DoubleEndedIterator, ExactSizeIterator, FromIterator},
     sync::Arc,
     vec::IntoIter,
 };
 
 // TODO: lib w/ proc_macro #derive(Iter) on structs with fields of uniform type
 
+const QUEUE_LIST_SIZE: u8 = 4;
 pub struct QueueList<T> {
     pub graphics: T,
     pub compute: T,
     pub transfer: T,
     pub present: T,
-    // if you add more queues, remember to update FromIterator & Iterator impls
+    // if you add more queues, remember to update QUEUE_LIST_SIZE above
 }
 
 impl<'a, T> QueueList<T> {
     pub fn iter(&'a self) -> QueueListIterator<'a, T> {
-        QueueListIterator {
-            list: &self,
-            index: 0,
-        }
+        QueueListIterator::new(&self)
     }
 }
 
@@ -49,26 +48,60 @@ impl<T> FromIterator<T> for QueueList<T> {
 
 pub struct QueueListIterator<'a, T> {
     list: &'a QueueList<T>,
-    index: u8,
+    index_forward: u8,
+    index_back: u8,
+}
+
+impl<'a, T> QueueListIterator<'a, T> {
+    fn new(list: &'a QueueList<T>) -> Self {
+        QueueListIterator {
+            list,
+            index_forward: 0,
+            index_back: QUEUE_LIST_SIZE,
+        }
+    }
+
+    fn lookup(&mut self, index: u8) -> &'a T {
+        match index {
+            0 => &self.list.graphics,
+            1 => &self.list.compute,
+            2 => &self.list.transfer,
+            3 => &self.list.present,
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl<'a, T> Iterator for QueueListIterator<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let ret = match self.index {
-            0 => Some(&self.list.graphics),
-            1 => Some(&self.list.compute),
-            2 => Some(&self.list.transfer),
-            3 => Some(&self.list.present),
-            _ => None,
-        };
+        if self.index_forward == self.index_back {
+            None
+        } else {
+            let ret = self.lookup(self.index_forward);
+            self.index_forward += 1;
 
-        if ret.is_some() {
-            self.index += 1;
+            Some(ret)
         }
+    }
 
-        ret
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size: usize = (self.index_back - self.index_forward).try_into().unwrap();
+        (size, Some(size))
+    }
+}
+
+impl<'a, T> ExactSizeIterator for QueueListIterator<'a, T> {}
+
+impl<'a, T> DoubleEndedIterator for QueueListIterator<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.index_forward == self.index_back {
+            None
+        } else {
+            self.index_back -= 1;
+            Some(self.lookup(self.index_back))
+        }
     }
 }
 
@@ -78,7 +111,9 @@ pub type Queues = QueueList<Arc<Queue>>;
 
 impl Default for QueuePriorities {
     fn default() -> Self {
-        repeat(1.0).take(4).collect()
+        repeat(1.0)
+            .take(QUEUE_LIST_SIZE.try_into().unwrap())
+            .collect()
     }
 }
 
@@ -186,19 +221,14 @@ pub fn find_queue_families(
 pub fn get_sharing_mode(queue_families: &QueueFamilies, queues: &Queues) -> SharingMode {
     use std::collections::HashMap;
 
-    // order is reversed from the struct so later queues take priority
-    let unique_queues = [
-        (queue_families.graphics, &queues.graphics),
-        (queue_families.compute, &queues.compute),
-        (queue_families.transfer, &queues.transfer),
-        (queue_families.present, &queues.present),
-    ]
-    .iter()
-    .cloned()
-    .collect::<HashMap<_, _>>()
-    .values()
-    .map(|q| *q)
-    .collect::<Vec<_>>();
+    let unique_queues = queue_families
+        .iter()
+        .zip(queues.iter())
+        .rev() // reverse the order so earlier queues "bump out" later ones
+        .collect::<HashMap<_, _>>()
+        .values()
+        .copied()
+        .collect::<Vec<_>>();
 
     if unique_queues.len() == 1 {
         unique_queues[0].into()
