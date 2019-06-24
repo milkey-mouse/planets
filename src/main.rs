@@ -65,28 +65,32 @@ impl PlanetsGame {
         };
 
         let instance = Self::create_instance(&app_info);
-        let (event_loop, surface) = Self::create_surface(&instance, &app_info);
+        let (event_loop, surface) = Self::create_surface(instance.clone(), &app_info);
 
         let (physical_device_index, device_config) =
-            config::pick_physical_device(&instance, &surface);
+            config::pick_physical_device(instance.clone(), &surface);
         let (device, queues) = Self::create_logical_device(
-            &instance,
+            instance.clone(),
             physical_device_index,
             &device_config.queue_families,
         );
 
         let (swapchain, swapchain_images) =
-            Self::create_swapchain(&surface, &device, &queues, &device_config);
+            Self::create_swapchain(surface.clone(), device.clone(), &queues, &device_config);
 
-        let render_pass = Self::create_render_pass(&device, swapchain.format());
-        let graphics_pipeline =
-            Self::create_graphics_pipeline(&device, device_config.extents, &render_pass);
+        let render_pass = Self::create_render_pass(device.clone(), swapchain.format());
+        let graphics_pipeline = Self::create_graphics_pipeline(
+            device.clone(),
+            device_config.extents,
+            render_pass.clone(),
+        );
 
-        let swapchain_framebuffers = Self::create_framebuffers(&swapchain_images, &render_pass);
+        let swapchain_framebuffers =
+            Self::create_framebuffers(&swapchain_images, render_pass.clone());
 
-        let previous_frame_end = Some(Self::create_sync_objects(&device));
+        let previous_frame_end = Some(Self::create_sync_objects(device.clone()));
 
-        let vertex_buffer = Self::create_vertex_buffer(&device);
+        let vertex_buffer = Self::create_vertex_buffer(device.clone());
 
         let mut app = Self {
             instance,
@@ -119,8 +123,8 @@ impl PlanetsGame {
     }
 
     fn create_swapchain(
-        surface: &Arc<Surface<Window>>,
-        device: &Arc<Device>,
+        surface: Arc<Surface<Window>>,
+        device: Arc<Device>,
         queues: &Queues,
         device_config: &DeviceConfig,
     ) -> (Arc<Swapchain<Window>>, Vec<Arc<SwapchainImage<Window>>>) {
@@ -155,7 +159,7 @@ impl PlanetsGame {
     }
 
     fn create_render_pass(
-        device: &Arc<Device>,
+        device: Arc<Device>,
         color_format: Format,
     ) -> Arc<dyn RenderPassAbstract + Send + Sync> {
         Arc::new(
@@ -178,9 +182,9 @@ impl PlanetsGame {
     }
 
     fn create_graphics_pipeline(
-        device: &Arc<Device>,
+        device: Arc<Device>,
         extents: [u32; 2],
-        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
+        render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
     ) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
         use shaders::particle_vert::Vertex;
 
@@ -215,7 +219,7 @@ impl PlanetsGame {
 
     fn create_framebuffers(
         swapchain_images: &[Arc<SwapchainImage<Window>>],
-        render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
+        render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
     ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
         swapchain_images
             .iter()
@@ -232,7 +236,7 @@ impl PlanetsGame {
             .collect()
     }
 
-    fn create_vertex_buffer(device: &Arc<Device>) -> Arc<dyn BufferAccess + Send + Sync> {
+    fn create_vertex_buffer(device: Arc<Device>) -> Arc<dyn BufferAccess + Send + Sync> {
         use shaders::particle_vert::Vertex;
 
         // TODO: better buffer type
@@ -294,12 +298,12 @@ impl PlanetsGame {
             .collect();
     }
 
-    fn create_sync_objects(device: &Arc<Device>) -> Box<dyn GpuFuture> {
-        Box::new(sync::now(device.clone())) //as Box<dyn GpuFuture>
+    fn create_sync_objects(device: Arc<Device>) -> Box<dyn GpuFuture> {
+        Box::new(sync::now(device.clone()))
     }
 
     fn create_logical_device(
-        instance: &Arc<Instance>,
+        instance: Arc<Instance>,
         index: usize,
         queue_families: &QueueFamilies,
     ) -> (Arc<Device>, Queues) {
@@ -339,7 +343,7 @@ impl PlanetsGame {
     }
 
     fn create_surface(
-        instance: &Arc<Instance>,
+        instance: Arc<Instance>,
         app_info: &ApplicationInfo,
     ) -> (EventsLoop, Arc<Surface<Window>>) {
         let event_loop = EventsLoop::new();
@@ -435,14 +439,14 @@ impl PlanetsGame {
         self.swapchain = swapchain;
         self.swapchain_images = images;
 
-        self.render_pass = Self::create_render_pass(&self.device, self.swapchain.format());
+        self.render_pass = Self::create_render_pass(self.device.clone(), self.swapchain.format());
         self.graphics_pipeline = Self::create_graphics_pipeline(
-            &self.device,
+            self.device.clone(),
             self.swapchain.dimensions(),
-            &self.render_pass,
+            self.render_pass.clone(),
         );
         self.swapchain_framebuffers =
-            Self::create_framebuffers(&self.swapchain_images, &self.render_pass);
+            Self::create_framebuffers(&self.swapchain_images, self.render_pass.clone());
         self.create_command_buffers();
 
         return true;

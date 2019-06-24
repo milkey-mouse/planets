@@ -83,7 +83,7 @@ impl Default for QueuePriorities {
 }
 
 pub fn find_queue_families(
-    surface: &Arc<Surface<Window>>,
+    surface: &Surface<Window>,
     device: &PhysicalDevice,
 ) -> Result<QueueFamilies, ()> {
     // TODO: implement PartialEQ on QueueFamilies

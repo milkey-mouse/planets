@@ -50,8 +50,8 @@ pub fn choose_alpha_mode(supported: &SupportedCompositeAlpha) -> CompositeAlpha 
 }
 
 pub fn pick_physical_device(
-    instance: &Arc<Instance>,
-    surface: &Arc<Surface<Window>>,
+    instance: Arc<Instance>,
+    surface: &Surface<Window>,
 ) -> (usize, DeviceConfig) {
     let mut device_config = Err(());
     let device_index = PhysicalDevice::enumerate(&instance)
@@ -65,7 +65,7 @@ pub fn pick_physical_device(
 }
 
 pub fn create_device_config(
-    surface: &Arc<Surface<Window>>,
+    surface: &Surface<Window>,
     device: &PhysicalDevice,
 ) -> Result<DeviceConfig, ()> {
     let queue_families = queues::find_queue_families(surface, device)?;
