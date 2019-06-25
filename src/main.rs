@@ -22,6 +22,8 @@ use std::{iter::FromIterator, sync::Arc, thread};
 mod assets;
 mod audio;
 mod render;
+mod util;
+
 use render::{
     config::{self, DeviceConfig},
     queues::{self, QueueFamilies, QueuePriorities, Queues},

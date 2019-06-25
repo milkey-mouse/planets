@@ -15,6 +15,7 @@ const WIDTH: u32 = 1280;
 const HEIGHT: u32 = 720;
 
 use super::queues::{self, QueueFamilies};
+use crate::util::prefer;
 
 pub struct DeviceConfig {
     pub queue_families: QueueFamilies,
@@ -24,29 +25,18 @@ pub struct DeviceConfig {
     pub extents: [u32; 2],
 }
 
-// TODO: prefer() function for best available choice
-// it would be something like this:
-// `fn prefer<'a, T>(wanted: Iterable<&T>, supported: Iterable<&T>, default_to_first: bool) -> Option<&'a T>`
-// we can replace some of the queue_family, format, present_mode, etc.
-// selection logic with this fn. the lifetime annotations in the above
-// signature may be unnecessary; I don't know Rust well enough to know
-// without a `cargo check`
-
 pub fn choose_alpha_mode(supported: SupportedCompositeAlpha) -> CompositeAlpha {
     // prefer premultiplied over opaque over inherit alpha modes
     // postmultiplied mode won't work well because we're cheating
     // by making the clear color the only transparency in the game
     // and drawing everything else as if there was none
-    [
+    const WANTED: &[CompositeAlpha] = &[
         CompositeAlpha::PreMultiplied,
         CompositeAlpha::Opaque,
         CompositeAlpha::Inherit,
-    ]
-    .iter()
-    .cloned()
-    .find(|a| supported.supports(*a))
-    .or_else(|| supported.iter().next())
-    .unwrap()
+    ];
+
+    prefer(WANTED, supported.iter(), true).unwrap()
 }
 
 pub fn pick_physical_device(
@@ -120,16 +110,14 @@ fn choose_surface_format(
         .ok_or(())
 }
 
-fn choose_present_mode(available_present_modes: SupportedPresentModes) -> Result<PresentMode, ()> {
-    if available_present_modes.mailbox {
-        Ok(PresentMode::Mailbox)
-    } else if available_present_modes.immediate {
-        Ok(PresentMode::Immediate)
-    } else if available_present_modes.fifo {
-        Ok(PresentMode::Fifo)
-    } else {
-        available_present_modes.iter().next().ok_or(())
-    }
+fn choose_present_mode(available: SupportedPresentModes) -> Result<PresentMode, ()> {
+    const WANTED: &[PresentMode] = &[
+        PresentMode::Mailbox,
+        PresentMode::Immediate,
+        PresentMode::Fifo,
+    ];
+
+    prefer(WANTED, available.iter(), true).ok_or(())
 }
 
 pub fn get_extents(capabilities: &Capabilities, window: &Window) -> [u32; 2] {
