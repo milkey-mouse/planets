@@ -322,7 +322,7 @@ impl PlanetsGame {
             // TODO: make graphics priority vs. compute priority configurable
             let priorities: QueuePriorities = Default::default();
 
-            families.zip(priorities.iter().copied()).collect()
+            families.zip(priorities.iter().map(|p| *p)).collect()
         };
 
         let device_ext = DeviceExtensions {
