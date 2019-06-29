@@ -1,34 +1,21 @@
-use sample::{
-    frame::Stereo,
-    signal::{self, Signal},
-};
+use super::{sink::Sink, source::Source};
+use crate::assets::{self, Asset};
 
-use super::{source, CanonicalFormat};
-use crate::assets;
+pub fn vlem<'a>(sink: &dyn Sink) -> Source<'a> {
+    const VLEM: [&Asset; 8] = [
+        &assets::vlem0,
+        &assets::vlem1,
+        &assets::vlem2,
+        &assets::vlem3,
+        &assets::vlem4,
+        &assets::vlem5,
+        &assets::vlem6,
+        &assets::vlem7,
+    ];
 
-/*struct LoadableSource {
-    data: &'static [u8],
-    source: Option<Box<dyn CanonicalSignal>>,
-}
-
-impl LoadableSource {
-    fn load()  {
-
-    }
-}*/
-
-// vlem() essentially implements CanonicalSignal, but that can't be expressed
-// without trait aliases (see TODO comment in ../audio.rs & issue #31)
-pub fn vlem() -> impl Signal<Frame = Stereo<CanonicalFormat>> + Send + Sync {
-    signal::from_iter(
-        source::new(&assets::vlem0)
-            .until_exhausted()
-            .chain(source::new(&assets::vlem1).until_exhausted())
-            .chain(source::new(&assets::vlem2).until_exhausted())
-            .chain(source::new(&assets::vlem3).until_exhausted())
-            .chain(source::new(&assets::vlem4).until_exhausted())
-            .chain(source::new(&assets::vlem5).until_exhausted())
-            .chain(source::new(&assets::vlem6).until_exhausted())
-            .chain(source::new(&assets::vlem7).until_exhausted()),
-    )
+    VLEM[1..]
+        .iter()
+        .map(|&a| Source::new(a))
+        .fold(Source::new(VLEM[0]), Source::chain)
+        .canonicalize(sink)
 }

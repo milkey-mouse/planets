@@ -17,13 +17,14 @@ use vulkano::{
 use vulkano_win::VkSurfaceBuild;
 use winit::{dpi::LogicalSize, Event, EventsLoop, Window, WindowBuilder, WindowEvent};
 
-use std::{iter::FromIterator, sync::Arc, thread};
+use std::{iter::FromIterator, sync::Arc};
 
 mod assets;
 mod audio;
 mod render;
 mod util;
 
+use audio::{music, sink::AudioThread};
 use render::{
     config::{self, DeviceConfig},
     queues::{self, QueueFamilies, QueuePriorities, Queues},
@@ -455,7 +456,10 @@ impl PlanetsGame {
 }
 
 fn main() {
-    let mut game = PlanetsGame::init();
-    thread::spawn(audio::sink::test);
-    game.main_loop();
+    AudioThread::with(|mut sink| {
+        sink.play(None, music::vlem(sink.as_ref()));
+
+        let mut game = PlanetsGame::init();
+        game.main_loop();
+    });
 }

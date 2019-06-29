@@ -1,3 +1,8 @@
+use std::{
+    panic,
+    sync::atomic::{AtomicBool, Ordering},
+};
+
 // TODO: prefer() with references
 
 // TODO: prefer() should be a wrapper around prefer_fn()
@@ -42,5 +47,24 @@ pub fn prefer_fn<'a, T: 'a>(
         supported
             .find(wanted)
             .or_else(|| Some(first).filter(|_| default_to_first))
+    }
+}
+
+static SETUP_HOOK: AtomicBool = AtomicBool::new(false);
+
+pub struct IntentionalPanic;
+
+impl IntentionalPanic {
+    pub fn setup_hook() {
+        if !SETUP_HOOK.load(Ordering::Acquire) {
+            let original_hook = panic::take_hook();
+            panic::set_hook(Box::new(move |panic_info| {
+                if panic_info.payload().downcast_ref::<Self>().is_none() {
+                    original_hook(panic_info);
+                }
+            }));
+
+            SETUP_HOOK.store(true, Ordering::Release);
+        }
     }
 }
