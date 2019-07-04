@@ -666,9 +666,9 @@ dependencies = [
  "hound 3.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lewton 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "sample 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "vulkano 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "vulkano-shaders 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "vulkano-win 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vulkano 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vulkano-shaders 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vulkano-win 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.19.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1041,7 +1041,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "vulkano"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crossbeam 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "vulkano-shaders"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1066,13 +1066,13 @@ dependencies = [
 
 [[package]]
 name = "vulkano-win"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cocoa 0.18.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "metal 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "objc 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "vulkano 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vulkano 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winit 0.19.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1356,9 +1356,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum vec_map 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "05c78687fb1a80548ae3250346c3db86a80a7cdd77bda190189f2d0a0987c81a"
 "checksum vk-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "36f5fd4a7d6d5d19808610583131c0aed271556527cad4cb71c436831a28e059"
 "checksum void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
-"checksum vulkano 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ca1a72752398919373ae1286c36fe889acc2450f58d4a2a00b70d53622432772"
-"checksum vulkano-shaders 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a4b861b7dd010c72d41161e7d36e36fbb333350c99f40e2d8f9d3f0d32816960"
-"checksum vulkano-win 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e4ea37a774b803d0913ad2996581952908df2df079121c5e6604a925a347353b"
+"checksum vulkano 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c6f294e6ee35791705302dcfbadae018e9ec407b5c2116c1855e1bfe2e0fdffa"
+"checksum vulkano-shaders 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "116098075a36f2265dc40d1dd73dc6c255502088fa8a845cc372c3ca42320742"
+"checksum vulkano-win 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6d67280a00aadee8d7730cabb48dd3fc86c1726791dfdfcc399f0053a69dc87f"
 "checksum walkdir 2.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "c7904a7e2bb3cdf0cf5e783f44204a85a37a93151738fa349f06680f59a98b45"
 "checksum wayland-client 0.21.13 (registry+https://github.com/rust-lang/crates.io-index)" = "49963e5f9eeaf637bfcd1b9f0701c99fd5cd05225eb51035550d4272806f2713"
 "checksum wayland-commons 0.21.13 (registry+https://github.com/rust-lang/crates.io-index)" = "40c08896768b667e1df195d88a62a53a2d1351a1ed96188be79c196b35bb32ec"
