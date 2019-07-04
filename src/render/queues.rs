@@ -231,7 +231,7 @@ pub fn get_sharing_mode(queue_families: &QueueFamilies, queues: &Queues) -> Shar
         .rev() // reverse the order so earlier queues "bump out" later ones
         .collect::<HashMap<_, _>>()
         .values()
-        .map(|p| *p)
+        .copied()
         .collect::<Vec<_>>();
 
     if unique_queues.len() == 1 {
