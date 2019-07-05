@@ -15,7 +15,7 @@ const WIDTH: u32 = 1280;
 const HEIGHT: u32 = 720;
 
 use super::queues::{self, QueueFamilies};
-use crate::util::prefer;
+use crate::util::{clamp, prefer};
 
 pub struct DeviceConfig {
     pub queue_families: QueueFamilies,
@@ -128,11 +128,12 @@ pub fn get_extents(capabilities: &Capabilities, window: &Window) -> [u32; 2] {
         .into();
 
     capabilities.current_extent.unwrap_or_else(|| {
-        [
-            // TODO: use clamp() when stabilized
-            // see rust-lang/rust#44095
-            capabilities.min_image_extent[0].max(capabilities.max_image_extent[0].min(dims.0)),
-            capabilities.min_image_extent[1].max(capabilities.max_image_extent[1].min(dims.1)),
-        ]
+        let Capabilities {
+            min_image_extent: min,
+            max_image_extent: max,
+            ..
+        } = capabilities;
+
+        [clamp(dims.0, min[0], max[0]), clamp(dims.1, min[1], max[1])]
     })
 }

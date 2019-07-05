@@ -3,6 +3,11 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
+pub fn clamp<T: Ord>(num: T, min: T, max: T) -> T {
+    assert!(max > min);
+    num.min(max).max(min)
+}
+
 // TODO: prefer() with references
 
 // TODO: prefer() should be a wrapper around prefer_fn()
