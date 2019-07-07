@@ -3,3 +3,4 @@ todo:
   reopenClosed: false
   keyword: ["// TODO: ", "# TODO: "]
   bodyKeyword: ["// ", "# "]
+  label: "todo"
