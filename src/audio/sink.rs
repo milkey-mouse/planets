@@ -42,8 +42,8 @@ impl<'a> Sink<'a> for DummySink {
 #[derive(Clone)]
 pub struct AudioThread<'a> {
     mixer: Mixer<'a>,
-    stopping: Arc<AtomicBool>,
     format: Format,
+    stopping: Arc<AtomicBool>,
 }
 
 impl<'a> Sink<'a> for AudioThread<'a> {

@@ -2,8 +2,10 @@ use std::convert::TryFrom;
 
 mod mixer;
 pub mod music;
-pub mod sink;
-pub mod source;
+mod sink;
+mod source;
+
+pub use sink::AudioThread;
 
 // this probably would be i16 were it not for Interpolators requiring f64 frames
 pub type SampleFormat = f64;
@@ -15,15 +17,6 @@ pub enum Channels {
     Stereo,
     Mono,
 }
-
-/*impl Into<u8> for Channels {
-    fn into(self) -> u8 {
-        match self {
-            Channels::Mono => 1,
-            Channels::Stereo => 2,
-        }
-    }
-}*/
 
 impl TryFrom<u32> for Channels {
     type Error = ();

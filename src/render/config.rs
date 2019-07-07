@@ -7,29 +7,25 @@ use vulkano::{
         SupportedPresentModes, Surface,
     },
 };
-use winit::{dpi::LogicalSize, Window};
+use winit::window::Window;
 
 use std::sync::Arc;
 
-const WIDTH: u32 = 1280;
-const HEIGHT: u32 = 720;
-
 use super::queues::{self, QueueFamilies};
-use crate::util::{clamp, prefer};
+use crate::util::prefer;
 
 pub struct DeviceConfig {
     pub queue_families: QueueFamilies,
     pub capabilities: Capabilities,
     pub surface_format: (Format, ColorSpace),
     pub present_mode: PresentMode,
-    pub extents: [u32; 2],
 }
 
 pub fn choose_alpha_mode(supported: SupportedCompositeAlpha) -> CompositeAlpha {
     // prefer premultiplied over opaque over inherit alpha modes
     // postmultiplied mode won't work well because we're cheating
     // by making the clear color the only transparency in the game
-    // and drawing everything else as if there was none
+    // and drawing everything else as if there were none (alpha 255)
     const WANTED: &[CompositeAlpha] = &[
         CompositeAlpha::PreMultiplied,
         CompositeAlpha::Opaque,
@@ -39,19 +35,18 @@ pub fn choose_alpha_mode(supported: SupportedCompositeAlpha) -> CompositeAlpha {
     prefer(WANTED, supported.iter(), true).unwrap()
 }
 
-pub fn pick_physical_device(
-    instance: &Arc<Instance>,
+pub fn pick_physical_device<'a>(
+    instance: &'a Arc<Instance>,
     surface: &Surface<Window>,
-) -> (usize, DeviceConfig) {
+) -> (PhysicalDevice<'a>, DeviceConfig) {
     let mut device_config = Err(());
-    let device_index = PhysicalDevice::enumerate(instance)
+    let device = PhysicalDevice::enumerate(&instance)
         .find(|device| {
             device_config = create_device_config(surface, &device);
             device_config.is_ok()
         })
-        .expect("No Vulkan-capable devices (GPUs) found")
-        .index();
-    (device_index, device_config.unwrap())
+        .expect("No Vulkan-capable devices (GPUs) found");
+    (device, device_config.unwrap())
 }
 
 pub fn create_device_config(
@@ -70,14 +65,12 @@ pub fn create_device_config(
     let capabilities = surface.capabilities(*device).ok().ok_or(())?;
     let surface_format = choose_surface_format(&capabilities.supported_formats)?;
     let present_mode = choose_present_mode(capabilities.present_modes)?;
-    let extents = get_extents(&capabilities, &surface.window());
 
     Ok(DeviceConfig {
         queue_families,
         capabilities,
         surface_format,
         present_mode,
-        extents,
     })
 }
 
@@ -118,22 +111,4 @@ fn choose_present_mode(available: SupportedPresentModes) -> Result<PresentMode, 
     ];
 
     prefer(WANTED, available.iter(), true).ok_or(())
-}
-
-pub fn get_extents(capabilities: &Capabilities, window: &Window) -> [u32; 2] {
-    let dims: (u32, u32) = window
-        .get_inner_size()
-        .unwrap_or_else(|| LogicalSize::new(WIDTH.into(), HEIGHT.into()))
-        .to_physical(window.get_hidpi_factor())
-        .into();
-
-    capabilities.current_extent.unwrap_or_else(|| {
-        let Capabilities {
-            min_image_extent: min,
-            max_image_extent: max,
-            ..
-        } = capabilities;
-
-        [clamp(dims.0, min[0], max[0]), clamp(dims.1, min[1], max[1])]
-    })
 }

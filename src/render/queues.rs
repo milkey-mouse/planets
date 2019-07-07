@@ -4,7 +4,7 @@ use vulkano::{
     swapchain::Surface,
     sync::SharingMode,
 };
-use winit::Window;
+use winit::window::Window;
 
 use std::{
     convert::TryInto,

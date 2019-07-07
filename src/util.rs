@@ -2,10 +2,18 @@ use std::{
     panic,
     sync::atomic::{AtomicBool, Ordering},
 };
+use vulkano::swapchain::Capabilities;
+use winit::dpi::PhysicalSize;
 
-pub fn clamp<T: Ord>(num: T, min: T, max: T) -> T {
+pub fn clamp<T: PartialOrd>(num: T, min: T, max: T) -> T {
     assert!(max > min);
-    num.min(max).max(min)
+    if num < min {
+        min
+    } else if num > max {
+        max
+    } else {
+        num
+    }
 }
 
 // TODO: prefer() with references
@@ -71,5 +79,52 @@ impl IntentionalPanic {
 
             SETUP_HOOK.store(true, Ordering::Release);
         }
+    }
+}
+
+pub fn clamp_window_size(dims: PhysicalSize, caps: &Capabilities) -> PhysicalSize {
+    return dims;
+
+    let Capabilities {
+        min_image_extent: min,
+        max_image_extent: max,
+        ..
+    } = caps;
+
+    (
+        clamp(dims.width, min[0].into(), max[0].into()),
+        clamp(dims.height, min[1].into(), max[1].into()),
+    )
+        .into()
+}
+
+pub trait ToExtents<T> {
+    fn to_extents(self) -> [T; 2];
+}
+
+impl<T> ToExtents<T> for [T; 2] {
+    fn to_extents(self) -> [T; 2] {
+        self
+    }
+}
+
+impl ToExtents<u32> for PhysicalSize {
+    fn to_extents(self) -> [u32; 2] {
+        let x: (u32, u32) = self.into();
+        [x.0, x.1]
+    }
+}
+
+impl ToExtents<f64> for PhysicalSize {
+    fn to_extents(self) -> [f64; 2] {
+        let x: (f64, f64) = self.into();
+        [x.0, x.1]
+    }
+}
+
+impl ToExtents<f32> for PhysicalSize {
+    fn to_extents(self) -> [f32; 2] {
+        let x: (f64, f64) = self.into();
+        [x.0 as f32, x.1 as f32]
     }
 }
