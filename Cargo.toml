@@ -31,3 +31,4 @@ winit = "0.20.0-alpha1"
 vulkano = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha1" }
 vulkano-shaders = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha1" }
 vulkano-win = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha1" }
+winit = { git = "https://github.com/rust-windowing/winit.git" }

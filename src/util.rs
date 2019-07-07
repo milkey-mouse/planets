@@ -83,8 +83,6 @@ impl IntentionalPanic {
 }
 
 pub fn clamp_window_size(dims: PhysicalSize, caps: &Capabilities) -> PhysicalSize {
-    return dims;
-
     let Capabilities {
         min_image_extent: min,
         max_image_extent: max,

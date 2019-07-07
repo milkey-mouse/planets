@@ -74,7 +74,6 @@ impl WindowEvents {
                 event: WindowEvent::Resized(size),
                 ..
             } => {
-                // TODO: resizing is janky/jerky/slow on at least Wayland with winit 0.20 beta
                 let physical: (u32, u32) = size.to_physical(self.dpi_factor.load()).into();
                 self.resize_to.store(Some((
                     NonZeroU32::new(physical.0).unwrap(),
