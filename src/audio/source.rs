@@ -22,6 +22,13 @@ enum Resampler<'a, F: Frame<Sample = SampleFormat>> {
     Sinc(SourceResampler<Box<Source<'a>>, F, interpolate::Sinc<[F; SINC_BUFFER_SIZE]>>),
 }
 
+// TODO: should SourceReader be a trait?
+// clippy seems to think so.
+// the current enum variants would be separate structs implementing the trait,
+// and boxed versions would be passed around.
+// most things here are boxed anyway, so it wouldn't be too much perf loss
+// and of course, this is all premature optimization because I've never seen
+// the audio thread take more than 10% CPU, even on debug mode.
 enum SourceReader<'a> {
     Wav(WavReader<Cursor<&'a [u8]>>),
     Ogg(

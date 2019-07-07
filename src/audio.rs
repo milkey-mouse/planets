@@ -34,7 +34,7 @@ impl TryFrom<u16> for Channels {
     type Error = ();
 
     fn try_from(channels: u16) -> Result<Self, Self::Error> {
-        Self::try_from(channels as u32)
+        Self::try_from(u32::from(channels))
     }
 }
 
@@ -42,6 +42,6 @@ impl TryFrom<u8> for Channels {
     type Error = ();
 
     fn try_from(channels: u8) -> Result<Self, Self::Error> {
-        Self::try_from(channels as u32)
+        Self::try_from(u32::from(channels))
     }
 }
