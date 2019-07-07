@@ -26,7 +26,7 @@ const DEFAULT_WINDOW_SIZE: Option<LogicalSize> = Some(LogicalSize {
 });
 
 fn main() {
-    let instance = create_instance();
+    let (instance, _debug_callback) = create_instance();
     WindowThread::with(instance.clone(), move |window| {
         AudioThread::with(|mut sink| {
             let events = window.events();

@@ -1,30 +1,13 @@
 use vulkano::{
-    buffer::{cpu_access::CpuAccessibleBuffer, BufferAccess, BufferUsage},
-    command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder, DynamicState},
-    device::{Device, DeviceExtensions},
-    format::Format,
-    framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
-    image::{swapchain::SwapchainImage, ImageUsage},
-    instance::{ApplicationInfo, Instance, PhysicalDevice},
-    pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
-    single_pass_renderpass,
-    swapchain::{
-        acquire_next_image, AcquireError, Surface, SurfaceTransform, Swapchain,
-        SwapchainCreationError,
-    },
-    sync::{self, GpuFuture},
-};
-/*use vulkano::{
     buffer::BufferAccess,
-    command_buffer::AutoCommandBuffer,
+    command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder, DynamicState},
     device::Device,
     framebuffer::{FramebufferAbstract, RenderPassAbstract},
-    image::SwapchainImage,
-    instance::Instance,
+    image::swapchain::SwapchainImage,
     pipeline::GraphicsPipelineAbstract,
-    swapchain::Swapchain,
-    sync::GpuFuture,
-};*/
+    swapchain::{acquire_next_image, AcquireError, Swapchain},
+    sync::{self, GpuFuture},
+};
 use winit::{dpi::PhysicalSize, window::Window as WinitWindow};
 
 use std::sync::Arc;
@@ -37,21 +20,14 @@ use config::DeviceConfig;
 use queues::Queues;
 
 use crate::{
-    get_app_info,
     util::ToExtents,
     window::{Window, WindowEvents},
 };
 
+pub use setup::create_instance;
+
 #[derive(Default)]
 struct Particle; // TODO: real Particle struct linked to vertex shader
-
-pub fn create_instance() -> Arc<Instance> {
-    // window-drawing functionality is in non-core extensions
-    let extensions = vulkano_win::required_extensions();
-
-    Instance::new(Some(&get_app_info()), &extensions, None)
-        .expect("Failed to create Vulkan instance")
-}
 
 pub struct Render {
     window: Window,

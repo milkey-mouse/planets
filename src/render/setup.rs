@@ -4,7 +4,10 @@ use vulkano::{
     format::Format,
     framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
     image::{swapchain::SwapchainImage, ImageUsage},
-    instance::{Instance, QueueFamily},
+    instance::{
+        debug::{DebugCallback, MessageTypes},
+        layers_list, Instance, QueueFamily,
+    },
     pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
     single_pass_renderpass,
     swapchain::{Surface, SurfaceTransform, Swapchain},
@@ -18,7 +21,74 @@ use super::{
     config::{self, DeviceConfig},
     queues::{self, QueuePriorities, Queues},
 };
-use crate::util::{clamp_window_size, ToExtents};
+use crate::{
+    get_app_info,
+    util::{clamp_window_size, ToExtents},
+};
+
+const ENABLE_VALIDATION_LAYERS: bool = cfg!(debug_assertions);
+const VALIDATION_LAYERS: &[&str] = &["VK_LAYER_KHRONOS_validation"];
+
+pub fn create_instance() -> (Arc<Instance>, Option<DebugCallback>) {
+    let layers = if ENABLE_VALIDATION_LAYERS {
+        if check_validation_layer_support() {
+            VALIDATION_LAYERS
+        } else {
+            eprintln!("warning: validation layers are unavailable");
+            &[]
+        }
+    } else {
+        &[]
+    }
+    .iter()
+    .copied();
+
+    // window-drawing functionality is in non-core extensions
+    let mut extensions = vulkano_win::required_extensions();
+
+    if ENABLE_VALIDATION_LAYERS {
+        // TODO: this should be ext_debug_utils (_report is deprecated)
+        // ext_debug_utils doesn't yet exist in vulkano
+        extensions.ext_debug_report = true;
+    }
+
+    let instance = Instance::new(Some(&get_app_info()), &extensions, layers)
+        .expect("Failed to create Vulkan instance");
+
+    let debug_callback = setup_debug_callback(&instance);
+
+    (instance, debug_callback)
+}
+
+fn check_validation_layer_support() -> bool {
+    // TODO: maybe use prefer() here? simplify
+    let layers: Vec<_> = layers_list()
+        .unwrap()
+        .map(|l| l.name().to_owned())
+        .collect();
+    VALIDATION_LAYERS
+        .iter()
+        .all(|layer_name| layers.contains(&layer_name.to_string()))
+}
+
+fn setup_debug_callback(instance: &Arc<Instance>) -> Option<DebugCallback> {
+    if ENABLE_VALIDATION_LAYERS {
+        let msg_types = MessageTypes {
+            error: true,
+            warning: true,
+            performance_warning: true,
+            information: false,
+            debug: true,
+        };
+
+        DebugCallback::new(&instance, msg_types, |msg| {
+            eprintln!("[validation]{}", msg.description);
+        })
+        .ok()
+    } else {
+        None
+    }
+}
 
 pub fn create_logical_device(
     instance: &Arc<Instance>,
