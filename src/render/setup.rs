@@ -109,7 +109,7 @@ pub fn create_logical_device(
         // TODO: make graphics priority vs. compute priority configurable
         let priorities: QueuePriorities = Default::default();
 
-        families.zip(priorities.iter().map(|p| *p)).collect()
+        families.zip(priorities.iter().copied()).collect()
     };
 
     let device_ext = DeviceExtensions {
