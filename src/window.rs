@@ -5,8 +5,9 @@ use winit::{
     self,
     dpi::PhysicalSize,
     event::{
-        Event::{self, UserEvent},
-        WindowEvent,
+        ElementState,
+        Event::{self, EventsCleared, NewEvents, UserEvent},
+        KeyboardInput, WindowEvent,
     },
     event_loop::{ControlFlow, EventLoop, EventLoopProxy, EventLoopWindowTarget},
     window::{Window as WinitWindow, WindowBuilder},
@@ -22,11 +23,16 @@ use std::{
     thread,
 };
 
+mod input;
+
+use input::Keybinds;
+
 use crate::{get_app_info, util::IntentionalPanic, DEFAULT_WINDOW_SIZE};
 
 pub struct WindowEvents {
     dpi_factor: AtomicCell<f64>,
     resize_to: AtomicCell<Option<(NonZeroU32, NonZeroU32)>>,
+    keybinds: Keybinds,
     closed: AtomicBool,
 }
 
@@ -37,6 +43,7 @@ impl WindowEvents {
         Self {
             dpi_factor: AtomicCell::new(1.0),
             resize_to: AtomicCell::new(None),
+            keybinds: Keybinds::new(),
             closed: AtomicBool::new(false),
         }
     }
@@ -49,6 +56,10 @@ impl WindowEvents {
         self.resize_to
             .swap(None)
             .map(|s| (s.0.get(), s.1.get()).into())
+    }
+
+    pub fn keybinds(&self) -> &Keybinds {
+        &self.keybinds
     }
 
     pub fn closed(&self) -> bool {
@@ -80,7 +91,26 @@ impl WindowEvents {
                     NonZeroU32::new(physical.1).unwrap(),
                 )));
             }
-            _ => {}
+            Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                scancode, state, ..
+                            },
+                        ..
+                    },
+                ..
+            } => match state {
+                ElementState::Pressed => self.keybinds.set(scancode, true),
+                ElementState::Released => self.keybinds.set(scancode, false),
+            },
+            EventsCleared => {}
+            NewEvents(_) => {}
+            //_ => {}
+            e => {
+                dbg!(e);
+            }
         }
 
         if self.closed() {
@@ -207,6 +237,10 @@ impl Window {
                 .inner_size()
                 .to_physical(self.events.dpi_factor())
         }
+    }
+
+    pub fn update(&self) {
+        self.events.keybinds.update();
     }
 }
 

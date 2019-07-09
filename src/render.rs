@@ -29,8 +29,8 @@ pub use setup::create_instance;
 #[derive(Default)]
 struct Particle; // TODO: real Particle struct linked to vertex shader
 
-pub struct Render {
-    window: Window,
+pub struct Render<'a> {
+    window: &'a Window,
     events: Arc<WindowEvents>,
     device_config: DeviceConfig,
     device: Arc<Device>,
@@ -45,8 +45,8 @@ pub struct Render {
     previous_frame_end: Option<Box<dyn GpuFuture>>,
 }
 
-impl Render {
-    pub fn new(window: Window) -> Self {
+impl<'a> Render<'a> {
+    pub fn new(window: &'a Window) -> Self {
         let events = window.events();
 
         let (device, device_config, queues) =
