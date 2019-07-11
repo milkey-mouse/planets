@@ -5,100 +5,130 @@
 // are probably totally different as well.
 // perhaps this belongs in winit? if not, it could make its own tiny crate.
 // (for macOS, see also https://github.com/JensAyton/KeyNaming)
+use arr_macro::arr;
+use crossbeam_utils::atomic::AtomicCell;
 use winit::event::ScanCode;
 
 use std::{
-    collections::{HashMap, HashSet},
     convert::TryInto,
     sync::{
         atomic::{AtomicU64, Ordering},
-        RwLock,
+        Arc,
     },
 };
 
-pub struct Keybinds {
-    free_indices: RwLock<HashSet<u8>>,
-    state_map: RwLock<HashMap<ScanCode, u8>>,
+pub struct Keybind<'a> {
+    // TODO: keep sizeof(Keybind) <= 64 so AtomicCell<Arc<Keybind>> is lock-free
+    state: &'a KeyState,
+    //scan_code: ScanCode,
+    index: usize,
+}
+
+impl<'a> Keybind<'a> {
+    pub fn new(state: &'a KeyState, scan_code: ScanCode) -> Self {
+        let index = state.add(scan_code);
+
+        Self {
+            state,
+            //scan_code,
+            index,
+        }
+    }
+
+    pub fn pressed(&self) -> bool {
+        self.state.pressed(self.index)
+    }
+
+    pub fn down(&self) -> bool {
+        self.state.down(self.index)
+    }
+
+    pub fn released(&self) -> bool {
+        self.state.released(self.index)
+    }
+}
+
+impl<'a> Drop for Keybind<'a> {
+    fn drop(&mut self) {
+        self.state.remove(self.index);
+    }
+}
+
+pub struct KeyState {
+    state_map: [AtomicCell<Option<ScanCode>>; 64],
     old_state: AtomicU64,
     state: AtomicU64,
 }
 
-impl Keybinds {
+impl KeyState {
     pub fn new() -> Self {
         Self {
-            free_indices: RwLock::new(HashSet::new()),
-            state_map: RwLock::new(HashMap::new()),
+            // TODO: remove arr_macro once Default is generic over array lengths >= 32
+            //state_map: [AtomicCell::new(None); 64],
+            state_map: arr![AtomicCell::new(None); 64],
             old_state: AtomicU64::new(0),
             state: AtomicU64::new(0),
         }
     }
 
-    pub fn add(&self, scan_code: ScanCode) {
-        let new_index = self
-            .free_indices
-            .write()
-            .unwrap()
-            .drain()
-            .next()
-            .unwrap_or(self.state_map.read().unwrap().len().try_into().unwrap());
-        assert!(new_index < 64);
+    pub fn bind(&self, scan_code: ScanCode) -> AtomicCell<Arc<Keybind>> {
+        AtomicCell::new(Arc::new(Keybind::new(&self, scan_code)))
+    }
 
-        assert!(self
+    fn add(&self, scan_code: ScanCode) -> usize {
+        let (new_index, slot) = self
             .state_map
-            .write()
-            .unwrap()
-            .insert(scan_code, new_index)
-            .is_none());
+            .iter()
+            .enumerate()
+            .find(|(_, x)| x.load().is_none())
+            .unwrap();
+
+        slot.store(Some(scan_code));
+
+        new_index
     }
 
-    pub fn remove(&self, scan_code: ScanCode) {
-        if let Some(deleted_index) = self.state_map.write().unwrap().remove(&scan_code) {
-            self.free_indices.write().unwrap().insert(deleted_index);
-        }
+    fn remove(&self, index: usize) {
+        let pointer = 1u64.wrapping_shl(index.try_into().unwrap());
+        self.state.fetch_and(!pointer, Ordering::Release);
+        self.old_state.fetch_and(!pointer, Ordering::Release);
 
-        /*loop {
-            let state = self.state.load(Ordering::Acquire);
-            let old_state = self.old_state.load(Ordering::Acquire);
-            let mask = u64::max_value() << deleted_index;
-        }
-
-        for (_, index) in state_map.iter_mut() {
-            if *index > deleted_index {
-                index -= 1;
-
-            }
-        }*/
+        self.state_map[index].store(None);
     }
 
-    fn get(&self, state: &AtomicU64, scan_code: ScanCode) -> bool {
-        let index = *self.state_map.read().unwrap().get(&scan_code).unwrap();
-        let pointer = 1u64.wrapping_shl(index.into());
+    fn pressed(&self, index: usize) -> bool {
+        !Self::get(&self.old_state, index) && Self::get(&self.state, index)
+    }
+
+    fn down(&self, index: usize) -> bool {
+        Self::get(&self.state, index)
+    }
+
+    fn released(&self, index: usize) -> bool {
+        Self::get(&self.old_state, index) && !Self::get(&self.state, index)
+    }
+
+    fn get(state: &AtomicU64, index: usize) -> bool {
+        let pointer = 1u64.wrapping_shl(index.try_into().unwrap());
         let state = state.load(Ordering::Acquire);
 
         state & pointer != 0
     }
 
-    pub fn pressed(&self, scan_code: ScanCode) -> bool {
-        !self.get(&self.old_state, scan_code) && self.get(&self.state, scan_code)
-    }
-
-    pub fn down(&self, scan_code: ScanCode) -> bool {
-        self.get(&self.state, scan_code)
-    }
-
-    pub fn released(&self, scan_code: ScanCode) -> bool {
-        self.get(&self.old_state, scan_code) && !self.get(&self.state, scan_code)
-    }
-
     pub fn set(&self, scan_code: ScanCode, pressed: bool) {
-        if let Some(&index) = self.state_map.read().unwrap().get(&scan_code) {
-            let pointer = 1u64.wrapping_shl(index.into());
+        let index = self
+            .state_map
+            .iter()
+            .enumerate()
+            .find(|(_, x)| x.load() == Some(scan_code))
+            .map(|(i, _)| i)
+            .unwrap();
 
-            if pressed {
-                self.state.fetch_or(pointer, Ordering::Release);
-            } else {
-                self.state.fetch_and(!pointer, Ordering::Release);
-            }
+        let pointer = 1u64.wrapping_shl(index.try_into().unwrap());
+        if pressed {
+            self.state.fetch_or(pointer, Ordering::Release);
+        } else {
+            self.state.fetch_and(!pointer, Ordering::Release);
         }
     }
 

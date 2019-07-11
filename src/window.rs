@@ -25,14 +25,14 @@ use std::{
 
 mod input;
 
-use input::Keybinds;
+use input::KeyState;
 
 use crate::{get_app_info, util::IntentionalPanic, DEFAULT_WINDOW_SIZE};
 
 pub struct WindowEvents {
     dpi_factor: AtomicCell<f64>,
     resize_to: AtomicCell<Option<(NonZeroU32, NonZeroU32)>>,
-    keybinds: Keybinds,
+    key_state: KeyState,
     closed: AtomicBool,
 }
 
@@ -43,7 +43,7 @@ impl WindowEvents {
         Self {
             dpi_factor: AtomicCell::new(1.0),
             resize_to: AtomicCell::new(None),
-            keybinds: Keybinds::new(),
+            key_state: KeyState::new(),
             closed: AtomicBool::new(false),
         }
     }
@@ -58,8 +58,8 @@ impl WindowEvents {
             .map(|s| (s.0.get(), s.1.get()).into())
     }
 
-    pub fn keybinds(&self) -> &Keybinds {
-        &self.keybinds
+    pub fn key_state(&self) -> &KeyState {
+        &self.key_state
     }
 
     pub fn closed(&self) -> bool {
@@ -102,15 +102,13 @@ impl WindowEvents {
                     },
                 ..
             } => match state {
-                ElementState::Pressed => self.keybinds.set(scancode, true),
-                ElementState::Released => self.keybinds.set(scancode, false),
+                ElementState::Pressed => self.key_state.set(scancode, true),
+                ElementState::Released => self.key_state.set(scancode, false),
             },
             EventsCleared => {}
             NewEvents(_) => {}
-            //_ => {}
-            e => {
-                dbg!(e);
-            }
+            //e => { dbg!(e); }
+            _ => {}
         }
 
         if self.closed() {
@@ -240,7 +238,7 @@ impl Window {
     }
 
     pub fn update(&self) {
-        self.events.keybinds.update();
+        self.events.key_state.update();
     }
 }
 
