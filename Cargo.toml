@@ -29,7 +29,7 @@ vulkano-win = "0.13.0"
 winit = "0.20.0-alpha1"
 
 [patch.crates-io]
-vulkano = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha1" }
-vulkano-shaders = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha1" }
-vulkano-win = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha1" }
+vulkano = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha" }
+vulkano-shaders = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha" }
+vulkano-win = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha" }
 winit = { git = "https://github.com/rust-windowing/winit.git" }
