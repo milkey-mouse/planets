@@ -7,30 +7,83 @@
 // (for macOS, see also https://github.com/JensAyton/KeyNaming)
 use arr_macro::arr;
 use crossbeam_utils::atomic::AtomicCell;
-use winit::event::ScanCode;
+use hashed::Hashed32;
+use winit::event::{ButtonId, DeviceEvent, DeviceId, ScanCode};
 
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
 };
 
-pub struct Keybind<'a> {
-    // TODO: keep sizeof(Keybind) <= 64 so AtomicCell<Arc<Keybind>> is lock-free
+// TODO: all of this only handles binary inputs
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum InputID {
+    None,
+    Button(ButtonId),
+    Key(ScanCode),
+}
+
+impl Default for InputID {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+impl TryFrom<DeviceEvent> for InputID {
+    type Error = ();
+
+    fn try_from(evt: DeviceEvent) -> Result<Self, Self::Error> {
+        match evt {
+            DeviceEvent::Button { button, .. } => Ok(Self::Button(button)),
+            DeviceEvent::Key(kb_input) => Ok(Self::Key(kb_input.scancode)),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default)]
+pub struct Input {
+    input_id: InputID,
+    device: Hashed32<Option<DeviceId>>,
+}
+
+impl PartialEq for Input {
+    fn eq(&self, other: &Self) -> bool {
+        let any_device = Default::default();
+
+        self.input_id == other.input_id
+            && (self.device == other.device
+                || self.device == any_device
+                || other.device == any_device)
+    }
+}
+
+impl Into<Input> for InputID {
+    fn into(self) -> Input {
+        Input {
+            input_id: self,
+            device: None.into(),
+        }
+    }
+}
+
+pub struct InputBinding<'a> {
     state: &'a KeyState,
-    //scan_code: ScanCode,
+    input: Input,
     index: usize,
 }
 
-impl<'a> Keybind<'a> {
-    pub fn new(state: &'a KeyState, scan_code: ScanCode) -> Self {
-        let index = state.add(scan_code);
+impl<'a> InputBinding<'a> {
+    pub fn new(state: &'a KeyState, input: Input) -> Self {
+        let index = state.add(input);
 
         Self {
             state,
-            //scan_code,
+            input,
             index,
         }
     }
@@ -46,16 +99,20 @@ impl<'a> Keybind<'a> {
     pub fn released(&self) -> bool {
         self.state.released(self.index)
     }
+
+    pub fn name() -> String {
+        unimplemented!()
+    }
 }
 
-impl<'a> Drop for Keybind<'a> {
+impl<'a> Drop for InputBinding<'a> {
     fn drop(&mut self) {
         self.state.remove(self.index);
     }
 }
 
 pub struct KeyState {
-    state_map: [AtomicCell<Option<ScanCode>>; 64],
+    state_map: [AtomicCell<Input>; 64],
     old_state: AtomicU64,
     state: AtomicU64,
 }
@@ -64,26 +121,28 @@ impl KeyState {
     pub fn new() -> Self {
         Self {
             // TODO: remove arr_macro once Default is generic over array lengths >= 32
-            //state_map: [AtomicCell::new(None); 64],
-            state_map: arr![AtomicCell::new(None); 64],
+            //state_map: [AtomicCell::new(Default::default()); 64],
+            state_map: arr![AtomicCell::new(Default::default()); 64],
             old_state: AtomicU64::new(0),
             state: AtomicU64::new(0),
         }
     }
 
-    pub fn bind(&self, scan_code: ScanCode) -> AtomicCell<Arc<Keybind>> {
-        AtomicCell::new(Arc::new(Keybind::new(&self, scan_code)))
+    pub fn bind(&self, input: Input) -> AtomicCell<Arc<InputBinding>> {
+        AtomicCell::new(Arc::new(InputBinding::new(&self, input)))
     }
 
-    fn add(&self, scan_code: ScanCode) -> usize {
+    fn add(&self, input: Input) -> usize {
+        let empty_slot = Default::default();
+
         let (new_index, slot) = self
             .state_map
             .iter()
             .enumerate()
-            .find(|(_, x)| x.load().is_none())
+            .find(|(_, x)| x.load() == empty_slot)
             .unwrap();
 
-        slot.store(Some(scan_code));
+        slot.store(input);
 
         new_index
     }
@@ -93,7 +152,7 @@ impl KeyState {
         self.state.fetch_and(!pointer, Ordering::Release);
         self.old_state.fetch_and(!pointer, Ordering::Release);
 
-        self.state_map[index].store(None);
+        self.state_map[index].store(Default::default());
     }
 
     fn pressed(&self, index: usize) -> bool {
@@ -115,20 +174,21 @@ impl KeyState {
         state & pointer != 0
     }
 
-    pub fn set(&self, scan_code: ScanCode, pressed: bool) {
-        let index = self
+    pub fn set(&self, input: Input, pressed: bool) {
+        if let Some(index) = self
             .state_map
             .iter()
             .enumerate()
-            .find(|(_, x)| x.load() == Some(scan_code))
+            .find(|(_, x)| x.load() == input)
             .map(|(i, _)| i)
-            .unwrap();
+        {
+            let pointer = 1u64.wrapping_shl(index.try_into().unwrap());
 
-        let pointer = 1u64.wrapping_shl(index.try_into().unwrap());
-        if pressed {
-            self.state.fetch_or(pointer, Ordering::Release);
-        } else {
-            self.state.fetch_and(!pointer, Ordering::Release);
+            if pressed {
+                self.state.fetch_or(pointer, Ordering::Release);
+            } else {
+                self.state.fetch_and(!pointer, Ordering::Release);
+            }
         }
     }
 

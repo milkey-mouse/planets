@@ -5,7 +5,7 @@ use winit::{
     self,
     dpi::PhysicalSize,
     event::{
-        ElementState,
+        DeviceEvent, ElementState,
         Event::{self, EventsCleared, NewEvents, UserEvent},
         KeyboardInput, WindowEvent,
     },
@@ -25,6 +25,7 @@ use std::{
 
 mod input;
 
+pub use input::InputID;
 use input::KeyState;
 
 use crate::{get_app_info, util::IntentionalPanic, DEFAULT_WINDOW_SIZE};
@@ -102,8 +103,15 @@ impl WindowEvents {
                     },
                 ..
             } => match state {
-                ElementState::Pressed => self.key_state.set(scancode, true),
-                ElementState::Released => self.key_state.set(scancode, false),
+                ElementState::Pressed => self.key_state.set(InputID::Key(scancode).into(), true),
+                ElementState::Released => self.key_state.set(InputID::Key(scancode).into(), false),
+            },
+            Event::DeviceEvent {
+                device_id,
+                event: DeviceEvent::Button { button, state },
+            } => match state {
+                ElementState::Pressed => self.key_state.set(InputID::Button(button).into(), true),
+                ElementState::Released => self.key_state.set(InputID::Button(button).into(), false),
             },
             EventsCleared => {}
             NewEvents(_) => {}

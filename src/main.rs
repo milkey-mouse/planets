@@ -11,7 +11,7 @@ mod window;
 
 use audio::{music, AudioThread};
 use render::{create_instance, Render};
-use window::WindowThread;
+use window::{InputID, WindowThread};
 
 pub fn get_app_info() -> ApplicationInfo<'static> {
     ApplicationInfo {
@@ -35,7 +35,10 @@ fn main() {
 
             let events = window.events();
 
-            let quit_key = events.key_state().bind(16).into_inner(); // Q
+            let quit_key = events
+                .key_state()
+                .bind(InputID::Key(16).into())
+                .into_inner(); // Q
             while !(events.closed() || quit_key.released()) {
                 window.update();
                 render.update();
