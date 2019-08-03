@@ -1,6 +1,7 @@
 use cpal::{
-    Device, EventLoop, Format, SampleRate, StreamData, StreamId, SupportedFormat,
-    UnknownTypeOutputBuffer,
+    platform::{Device, StreamId},
+    traits::{DeviceTrait, EventLoopTrait, HostTrait},
+    Format, SampleRate, StreamData, StreamDataResult, SupportedFormat, UnknownTypeOutputBuffer,
 };
 use crossbeam_utils::thread::{scope, Scope};
 use sample::{conv::ToSample, Sample};
@@ -88,10 +89,13 @@ impl<'a> AudioThread<'a> {
     }
 
     fn spawn(scope: &Scope<'a>) -> Result<Self, ()> {
-        let device = Self::get_output_device()?;
+        let host = cpal::default_host();
+        // TODO: sound device selection menu
+        // see issue #2
+        let device = host.default_output_device().ok_or(())?;
         let format = Self::get_output_format(&device)?;
 
-        let event_loop = EventLoop::new();
+        let event_loop = host.event_loop();
         let stream_id = event_loop
             .build_output_stream(&device, &format)
             .or(Err(()))?;
@@ -107,12 +111,6 @@ impl<'a> AudioThread<'a> {
         scope.spawn(move |_| event_loop.run(move |id, data| audio_thread.callback(id, data)));
 
         Ok(sink)
-    }
-
-    fn get_output_device() -> Result<Device, ()> {
-        // TODO: sound device selection menu
-        // see issue #2
-        cpal::default_output_device().ok_or(())
     }
 
     fn get_output_format(device: &Device) -> Result<Format, ()> {
@@ -141,8 +139,8 @@ impl<'a> AudioThread<'a> {
         .ok_or(())
     }
 
-    fn callback(&mut self, _id: StreamId, data: StreamData) {
-        match data {
+    fn callback(&mut self, _id: StreamId, data: StreamDataResult) {
+        match data.unwrap() {
             StreamData::Output {
                 buffer: UnknownTypeOutputBuffer::U16(mut buffer),
             } => self.fill_stream_buffer(&mut buffer),
