@@ -26,9 +26,22 @@ use std::{
 mod input;
 
 pub use input::InputID;
-use input::KeyState;
+use input::{Input, KeyState};
 
 use crate::{get_app_info, util::IntentionalPanic, DEFAULT_WINDOW_SIZE};
+
+trait AsBool {
+    fn as_bool(&self) -> bool;
+}
+
+impl AsBool for ElementState {
+    fn as_bool(&self) -> bool {
+        match self {
+            ElementState::Pressed => true,
+            ElementState::Released => false,
+        }
+    }
+}
 
 pub struct WindowEvents {
     dpi_factor: AtomicCell<f64>,
@@ -102,17 +115,16 @@ impl WindowEvents {
                         ..
                     },
                 ..
-            } => match state {
-                ElementState::Pressed => self.key_state.set(InputID::Key(scancode).into(), true),
-                ElementState::Released => self.key_state.set(InputID::Key(scancode).into(), false),
-            },
+            } => self
+                .key_state
+                .set(InputID::Key(scancode).into(), state.as_bool()),
             Event::DeviceEvent {
                 device_id,
                 event: DeviceEvent::Button { button, state },
-            } => match state {
-                ElementState::Pressed => self.key_state.set(InputID::Button(button).into(), true),
-                ElementState::Released => self.key_state.set(InputID::Button(button).into(), false),
-            },
+            } => self.key_state.set(
+                Input::new(InputID::Button(button), Some(device_id).into()),
+                state.as_bool(),
+            ),
             EventsCleared => {}
             NewEvents(_) => {}
             //e => { dbg!(e); }

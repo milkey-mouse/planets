@@ -19,8 +19,9 @@ use std::{
 };
 
 // TODO: all of this only handles binary inputs
+// TODO: refactor this file out into its own library
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum InputID {
     None,
     Button(ButtonId),
@@ -45,10 +46,16 @@ impl TryFrom<DeviceEvent> for InputID {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Input {
     input_id: InputID,
     device: Hashed32<Option<DeviceId>>,
+}
+
+impl Input {
+    pub fn new(input_id: InputID, device: Hashed32<Option<DeviceId>>) -> Self {
+        Self { input_id, device }
+    }
 }
 
 impl PartialEq for Input {
@@ -175,6 +182,7 @@ impl KeyState {
     }
 
     pub fn set(&self, input: Input, pressed: bool) {
+        dbg!(input);
         if let Some(index) = self
             .state_map
             .iter()
