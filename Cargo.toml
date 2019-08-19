@@ -24,13 +24,13 @@ hashed = { version = "0.2.1", features = ["truncate"] }
 hound = "3.4.0"
 lewton = "0.9.4"
 sample = "0.10.0"
-vulkano = "0.13.0"
-vulkano-shaders = "0.13.0"
-vulkano-win = "0.13.0"
-winit = "0.20.0-alpha2"
+vulkano = "0.14.0"
+vulkano-shaders = "0.14.0"
+vulkano-win = "0.14.0"
+winit = "0.20.0-alpha3"
 
 [patch.crates-io]
 vulkano = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha" }
 vulkano-shaders = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha" }
 vulkano-win = { git = "https://github.com/milkey-mouse/vulkano.git", branch = "winit-0.20.0-alpha" }
-winit = { git = "https://github.com/rust-windowing/winit.git" }
+#winit = { git = "https://github.com/rust-windowing/winit.git" }
